@@ -138,24 +138,26 @@ function currency(value: number, code = "EUR") {
 export function matchTenders(profile: CompanyProfile): TenderMatch[] {
   const minValue = parseNumber(profile.contractValueMin)
   const maxValue = parseNumber(profile.contractValueMax)
-  const insuranceLimit = parseNumber(profile.insuranceLimit)
-  const deadline = profile.submissionDeadline ? new Date(profile.submissionDeadline) : null
 
   const matches = MOCK_TENDERS.map((tender): TenderMatch => {
     let score = 40
     const reasons: string[] = []
     const considerations: string[] = []
 
-    // CPV / sector
-    if (profile.cpvCode) {
-      if (cpvFamily(tender.cpvCode) === cpvFamily(profile.cpvCode)) {
-        score += 22
-        reasons.push(`Same CPV family (${cpvFamily(profile.cpvCode)}xx) as your registered activity — a direct sector fit.`)
-      } else if (tender.cpvCode.slice(0, 2) === profile.cpvCode.slice(0, 2)) {
-        score += 10
-        reasons.push(`Within the same broad construction division (45xx) as your CPV code.`)
+    // What the company does — free-text match against the tender
+    if (profile.does.trim()) {
+      const terms = profile.does
+        .toLowerCase()
+        .split(/[,;\n]/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+      const haystack = `${tender.title} ${tender.description} ${tender.cpvLabel}`.toLowerCase()
+      const hits = terms.filter((t) => haystack.includes(t))
+      if (hits.length > 0) {
+        score += Math.min(22, hits.length * 8)
+        reasons.push(`Your activity ("${hits.join(", ")}") aligns with the scope of this tender.`)
       } else {
-        considerations.push("CPV code differs from your primary registered activity.")
+        considerations.push("The tender scope does not obviously match your stated activity.")
       }
     }
 
@@ -193,53 +195,41 @@ export function matchTenders(profile: CompanyProfile): TenderMatch[] {
       }
     }
 
-    // Deadline
-    if (deadline) {
-      const tenderDeadline = new Date(tender.deadline)
-      if (tenderDeadline >= deadline) {
-        score += 6
-        reasons.push(`Submission deadline (${tender.deadline}) gives you enough time to prepare a bid.`)
-      } else {
-        considerations.push(`Deadline ${tender.deadline} is earlier than your preferred cut-off.`)
+    // Specifications — free-text match against the tender description
+    if (profile.specifications.trim()) {
+      const terms = profile.specifications
+        .toLowerCase()
+        .split(/[,;\n]/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+      const haystack = `${tender.title} ${tender.description}`.toLowerCase()
+      const hits = terms.filter((t) => haystack.includes(t))
+      if (hits.length > 0) {
+        score += Math.min(10, hits.length * 5)
+        reasons.push(`Your specifications ("${hits.join(", ")}") appear in the tender requirements.`)
       }
     }
 
-    // Participation role
-    if (profile.participationRole) {
-      if (tender.role === profile.participationRole) {
+    // Revenue — a rough capacity check against the contract value
+    if (profile.revenue > 0) {
+      if (profile.revenue >= tender.value) {
         score += 8
-        reasons.push(`Suited to your preferred role as "${tender.role}".`)
+        reasons.push(`Your annual revenue comfortably exceeds the contract value of ${currency(tender.value, tender.currency)}.`)
+      } else if (profile.revenue * 3 >= tender.value) {
+        score += 3
+        considerations.push(`Contract value ${currency(tender.value, tender.currency)} is large relative to your revenue — plan cash flow carefully.`)
       } else {
-        considerations.push(`Structured for a "${tender.role}" — differs from your preferred "${profile.participationRole}".`)
+        considerations.push(`Contract value ${currency(tender.value, tender.currency)} may be too large for your current revenue.`)
       }
     }
 
-    // Insurance
-    if (insuranceLimit !== null) {
-      if (insuranceLimit >= tender.insuranceRequired) {
-        score += 6
-        reasons.push(`Your insurance limit covers the required ${currency(tender.insuranceRequired, tender.currency)}.`)
+    // Employees — a rough capacity check against the contract size
+    if (profile.employees > 0) {
+      if (tender.value > 5_000_000 && profile.employees < 50) {
+        considerations.push(`A contract of ${currency(tender.value, tender.currency)} may require more than your ${profile.employees} staff.`)
       } else {
-        considerations.push(`Requires ${currency(tender.insuranceRequired, tender.currency)} insurance — above your current limit.`)
-      }
-    }
-
-    // Guarantees
-    if (profile.financialGuarantees && tender.guaranteeRequired === profile.financialGuarantees) {
-      score += 4
-      reasons.push(`Financial guarantee requirement (${tender.guaranteeRequired}) matches what you can provide.`)
-    }
-
-    // Certificates
-    if (profile.certificates.length > 0) {
-      const missing = tender.requiredCertificates.filter((c) => !profile.certificates.includes(c))
-      const held = tender.requiredCertificates.filter((c) => profile.certificates.includes(c))
-      if (held.length > 0) {
-        score += Math.min(12, held.length * 4)
-        reasons.push(`You already hold ${held.length} of ${tender.requiredCertificates.length} required certificates.`)
-      }
-      if (missing.length > 0) {
-        considerations.push(`Missing certificate(s): ${missing.join(", ")}.`)
+        score += 4
+        reasons.push(`Your team of ${profile.employees} is a reasonable fit for the scale of this contract.`)
       }
     }
 

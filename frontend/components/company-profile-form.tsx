@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import {
   Select,
@@ -15,15 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  CPV_OPTIONS,
-  CONTRACT_NATURE_OPTIONS,
-  PARTICIPATION_ROLE_OPTIONS,
-  GUARANTEE_OPTIONS,
-  AVAILABILITY_OPTIONS,
-  CERTIFICATE_OPTIONS,
-  type CompanyProfile,
-} from "@/lib/tender-types"
+import { CONTRACT_NATURE_OPTIONS, type CompanyProfile } from "@/lib/tender-types"
 import { Loader2, Search, RotateCcw } from "lucide-react"
 
 type Props = {
@@ -47,13 +38,6 @@ export function CompanyProfileForm({ profile, onChange, onSubmit, onReset, loadi
   const set = <K extends keyof CompanyProfile>(key: K, value: CompanyProfile[K]) =>
     onChange({ ...profile, [key]: value })
 
-  const toggleCertificate = (cert: string, checked: boolean) => {
-    set(
-      "certificates",
-      checked ? [...profile.certificates, cert] : profile.certificates.filter((c) => c !== cert),
-    )
-  }
-
   return (
     <Card className="h-full border-border/60 shadow-sm">
       <CardHeader className="pb-4">
@@ -72,19 +56,14 @@ export function CompanyProfileForm({ profile, onChange, onSubmit, onReset, loadi
         >
           <Section title="Scope & Nature">
             <div className="space-y-2">
-              <Label htmlFor="cpv">Sector / CPV Code</Label>
-              <Select value={profile.cpvCode} onValueChange={(v) => set("cpvCode", v)}>
-                <SelectTrigger id="cpv">
-                  <SelectValue placeholder="Select a CPV code" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CPV_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="does">What Your Company Does</Label>
+              <Textarea
+                id="does"
+                placeholder="e.g. building construction, roofing, electrical installation…"
+                value={profile.does}
+                onChange={(e) => set("does", e.target.value)}
+                rows={3}
+              />
             </div>
 
             <div className="space-y-2">
@@ -116,7 +95,7 @@ export function CompanyProfileForm({ profile, onChange, onSubmit, onReset, loadi
 
           <Separator />
 
-          <Section title="Value & Timing">
+          <Section title="Contract Value">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="valMin">Contract Value — Min (EUR)</Label>
@@ -139,96 +118,48 @@ export function CompanyProfileForm({ profile, onChange, onSubmit, onReset, loadi
                 />
               </div>
             </div>
+          </Section>
 
+          <Separator />
+
+          <Section title="Company Capacity">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="deadline">Submission Deadline (from)</Label>
+                <Label htmlFor="revenue">Annual Revenue (EUR)</Label>
                 <Input
-                  id="deadline"
-                  type="date"
-                  value={profile.submissionDeadline}
-                  onChange={(e) => set("submissionDeadline", e.target.value)}
+                  id="revenue"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  placeholder="e.g. 5000000"
+                  value={profile.revenue === 0 ? "" : profile.revenue}
+                  onChange={(e) => set("revenue", e.target.value === "" ? 0 : Number(e.target.value))}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="availability">Availability Timeline</Label>
-                <Select value={profile.availabilityTimeline} onValueChange={(v) => set("availabilityTimeline", v)}>
-                  <SelectTrigger id="availability">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AVAILABILITY_OPTIONS.map((o) => (
-                      <SelectItem key={o} value={o}>
-                        {o}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="employees">Employees</Label>
+                <Input
+                  id="employees"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  placeholder="e.g. 40"
+                  value={profile.employees === 0 ? "" : profile.employees}
+                  onChange={(e) => set("employees", e.target.value === "" ? 0 : Number(e.target.value))}
+                />
               </div>
             </div>
           </Section>
 
           <Separator />
 
-          <Section title="Role & Financials">
-            <div className="space-y-2">
-              <Label htmlFor="role">Participation Role</Label>
-              <Select value={profile.participationRole} onValueChange={(v) => set("participationRole", v)}>
-                <SelectTrigger id="role">
-                  <SelectValue placeholder="Select participation role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PARTICIPATION_ROLE_OPTIONS.map((o) => (
-                    <SelectItem key={o} value={o}>
-                      {o}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="guarantee">Financial Guarantees</Label>
-              <Select value={profile.financialGuarantees} onValueChange={(v) => set("financialGuarantees", v)}>
-                <SelectTrigger id="guarantee">
-                  <SelectValue placeholder="Select what you can provide" />
-                </SelectTrigger>
-                <SelectContent>
-                  {GUARANTEE_OPTIONS.map((o) => (
-                    <SelectItem key={o} value={o}>
-                      {o}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="insurance">Insurance Limit (EUR)</Label>
-              <Input
-                id="insurance"
-                inputMode="numeric"
-                placeholder="e.g. 5000000"
-                value={profile.insuranceLimit}
-                onChange={(e) => set("insuranceLimit", e.target.value)}
-              />
-            </div>
-          </Section>
-
-          <Separator />
-
-          <Section title="Certificates & Professional Registers">
-            <div className="grid gap-3">
-              {CERTIFICATE_OPTIONS.map((cert) => (
-                <label key={cert} className="flex items-center gap-3 text-sm cursor-pointer">
-                  <Checkbox
-                    checked={profile.certificates.includes(cert)}
-                    onCheckedChange={(c) => toggleCertificate(cert, c === true)}
-                  />
-                  <span>{cert}</span>
-                </label>
-              ))}
-            </div>
+          <Section title="Specifications">
+            <Textarea
+              placeholder="e.g. turnkey delivery, MEP installations, 2-year maintenance…"
+              value={profile.specifications}
+              onChange={(e) => set("specifications", e.target.value)}
+              rows={3}
+            />
           </Section>
 
           <Separator />

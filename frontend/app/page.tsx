@@ -9,18 +9,15 @@ import { HardHat } from "lucide-react"
 import { toast } from "sonner"
 
 const EMPTY_PROFILE: CompanyProfile = {
-  cpvCode: "",
+  does: "",
   contractNature: "",
   placeOfPerformance: "",
   contractValueMin: "",
   contractValueMax: "",
-  submissionDeadline: "",
-  participationRole: "",
-  financialGuarantees: "",
-  insuranceLimit: "",
-  availabilityTimeline: "",
-  certificates: [],
   exclusions: "",
+  specifications: "",
+  revenue: 0,
+  employees: 0,
 }
 
 export default function Page() {
@@ -31,9 +28,11 @@ export default function Page() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const handleSubmit = async () => {
-    const filledFields = Object.values(profile).filter((v) =>
-      Array.isArray(v) ? v.length > 0 : v.trim() !== "",
-    ).length
+    const filledFields = Object.values(profile).filter((v) => {
+      if (Array.isArray(v)) return v.length > 0
+      if (typeof v === "number") return v > 0
+      return v.trim() !== ""
+    }).length
     if (filledFields < 2) {
       toast.error("Please fill in at least a couple of fields to get a meaningful match.")
       return
