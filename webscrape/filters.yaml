@@ -10,14 +10,17 @@
 # size, operating region, stated exclusions). They are a starting point, not
 # gospel — loosen or tighten anything.
 #
-# ---- Field reference -------------------------------------------------------
+# ---- Field reference: WIRED IN (fetch_tenders.py reads these today) -------
 # display_name      Free text, used in output filenames/headers.
 # cpv_prefixes      List of CPV code prefixes. A tender matches if ANY of its
-#                   item CPV codes starts with ANY prefix here.
+#                   item CPV codes (tender.items[].classification.id) starts
+#                   with ANY prefix here.
 #                   CPV browser: https://simap.ted.europa.eu/cpv
 # nuts_prefixes     List of NUTS region-code prefixes (Germany = DE...).
-#                   Matches if the tender's delivery region, buyer region, or
-#                   any listed party's region starts with ANY prefix here.
+#                   Matches if the tender's delivery region
+#                   (tender.items[].deliveryAddress.region), buyer region
+#                   (buyer.address.region), or any listed party's region
+#                   (parties[].address.region) starts with ANY prefix here.
 #                   NUTS reference for Germany:
 #                     DE1 Baden-Württemberg   DE6 Hamburg
 #                     DE2 Bayern              DE7 Hessen
@@ -30,17 +33,98 @@
 #                   Use a shorter prefix (e.g. "DE2") for a whole state, or a
 #                   longer one (e.g. "DE21") for a sub-region.
 # value_min         Minimum contract value in EUR. Use null for no floor.
+#                   Read from tender.value.amount, falling back to summed
+#                   tender.lots[].value if tender.value is absent. Non-EUR
+#                   currency, or no value found at all, is a hard reject
+#                   regardless of value_min/value_max (see "no value found"
+#                   / "non-EUR currency" reasons in matches_profile()).
 # value_max         Maximum contract value in EUR. Use null for no ceiling.
+#                   Same source fields as value_min.
 # exclude_keywords  Case-insensitive substrings. If ANY appear anywhere in the
-#                   tender title/description/lot text, the notice is rejected
+#                   tender text blob (tender.title, tender.description,
+#                   tender.procurementMethodRationale, tender.lots[].title,
+#                   tender.lots[].description), the notice is rejected
 #                   outright, no matter what else matches.
-# role_hint_reject  Same mechanics as exclude_keywords, but specifically for
-#                   phrases suggesting the tender's role/structure doesn't fit
-#                   (e.g. "seeking a subcontractor" when you only bid as GC).
-#                   Kept separate so you can tune role-fit independently of
-#                   hard capability exclusions.
+# role_hint_reject  Same mechanics as exclude_keywords, same text blob, but
+#                   specifically for phrases suggesting the tender's
+#                   role/structure doesn't fit (e.g. "seeking a
+#                   subcontractor" when you only bid as GC). Kept separate so
+#                   you can tune role-fit independently of hard capability
+#                   exclusions.
 # notes             Free text, shown in the output markdown footer. Not used
 #                   for matching.
+#
+# ---- Field reference: WIRED IN (newer, all OPTIONAL / lenient-by-default) -
+# Leaving any of these unset (or null) is a true no-op: matches_profile()
+# behaves exactly as it did before these existed. Full schema (types,
+# defaults, OCDS source paths) also lives in filters.json for tooling/docs.
+#
+# cpv_prefixes now also matches secondary/additional classification codes,
+# not just the primary one - no new key needed for this, it's automatic:
+# tender.additionalClassifications[].id and tender.items[].
+# additionalClassifications[].id are folded into the same CPV pool that
+# cpv_prefixes is checked against.
+#
+# procurement_methods_allowed   List of allowed tender.procurementMethod
+#                                values (case-insensitive), e.g. [open,
+#                                restricted]. A release is rejected only if
+#                                procurementMethod IS present and NOT in this
+#                                list - if the field is missing on a given
+#                                release, this check is skipped (lenient),
+#                                since it's sparsely populated. null/unset =
+#                                no filter (default).
+# min_bid_prep_days             Minimum days between tender.tenderPeriod.
+#                                startDate and .endDate. Rejects only if the
+#                                period IS present and shorter than this.
+#                                Missing tenderPeriod -> skipped (lenient).
+#                                null/unset = no filter (default).
+# reject_reserved_participation Boolean. If true, reject releases where
+#                                tender.otherRequirements.
+#                                reservedParticipation is present and
+#                                non-empty (sheltered-workshop / social-
+#                                enterprise set-asides). Missing field ->
+#                                not rejected. Default: false.
+# contract_starts_after /
+# contract_starts_before        ISO date strings ("YYYY-MM-DD"), inclusive
+#                                bounds on tender.lots[].contractPeriod.
+#                                startDate. A release is rejected only if it
+#                                HAS at least one lot with a contractPeriod.
+#                                startDate and NONE of them fall in the
+#                                [after, before] window - if no lot has a
+#                                contractPeriod at all, this check is skipped
+#                                (lenient). Either bound can be set alone.
+#                                null/unset = no filter (default).
+#
+# ---- Field reference: NOT WIRED IN (present in the OCDS data, not read by
+# ---- matches_profile() - see sample_release.md / inspect_release.py for
+# ---- what's actually populated on real notices before building a filter
+# ---- around any of these) --------------------------------------------------
+# tender.lotDetails               Lot-bidding constraints, e.g.
+#                                  maximumLotsBidPerSupplier. NOT PRESENT on
+#                                  the one sample checked so far - confirm on
+#                                  more samples before relying on it.
+# tender.submissionMethodDetails  How/where to submit a bid (portal URL,
+#                                  postal, etc.) Free text - not obviously
+#                                  filterable, more useful as context in the
+#                                  rendered output. NOT PRESENT on the one
+#                                  sample checked.
+# parties[].roles[]               Every organization's role(s) in the process
+#                                  (buyer, reviewBody, mediationBody,
+#                                  processContactPoint,
+#                                  submissionReceiptBody, etc.) - IS present
+#                                  on the sample checked. Not obviously a
+#                                  matching filter, but useful context (e.g.
+#                                  confirming who actually receives
+#                                  submissions vs. who's just a review body).
+# awards / contracts              Award/contract-stage data. Not expected on
+#                                  pre-award notices (this pipeline fetches
+#                                  pre-award tender notices), so not useful
+#                                  as a filter here regardless of population.
+#
+# Use inspect_release.py to check whether a NOT-PRESENT field above actually
+# shows up on a broader sample before deciding whether it's worth wiring in
+# (a field absent on every notice you check is a data-coverage dead end, not
+# something worth adding matching logic for).
 # -----------------------------------------------------------------------------
 #
 # ---- Current state: SOFT / PROOF-OF-CONCEPT --------------------------------
@@ -136,6 +220,17 @@ brenner_sohn_tiefbau:
   # once there's enough output to check the false-positive rate.
   role_hint_reject: []
 
+  # New optional fields (see header) - left unset/null so this is still a
+  # pure no-op vs. the pre-existing behavior. Uncomment and tune once
+  # there's real signal on which of these actually matters for this
+  # company (e.g. a 400k-4M civil contractor plausibly cares about
+  # procurement method and lead time to prepare a bid):
+  # procurement_methods_allowed: ["open", "restricted"]
+  # min_bid_prep_days: 10
+  # reject_reserved_participation: false
+  # contract_starts_after: null
+  # contract_starts_before: null
+
   notes: "Regional civil contractor: roads, sewers, earthworks. Bavaria only, own machinery, no rail/bridges."
 
 
@@ -185,6 +280,17 @@ elektro_vogtland:
   # real OCDS field, so it's the first thing to relax for volume and the
   # first place to check for false positives once output exists.
   role_hint_reject: []
+
+  # New optional fields (see header) - unset/null for now, same no-op
+  # reasoning as the other companies. A small subcontractor-only specialist
+  # is the most likely of the three to actually want reject_reserved_
+  # participation: true once there's enough volume to check it's not
+  # accidentally filtering out work they'd otherwise want.
+  # procurement_methods_allowed: null
+  # min_bid_prep_days: null
+  # reject_reserved_participation: false
+  # contract_starts_after: null
+  # contract_starts_before: null
 
   notes: "Small electrical specialist, usually subcontractor. Saxony/Thuringia/east Bavaria, small contract sizes."
 
@@ -237,5 +343,17 @@ hanseatische_bau:
   # reasoning as the other two companies: plain-text heuristic, first thing
   # to relax for volume, first place to check for false positives later.
   role_hint_reject: []
+
+  # New optional fields (see header) - unset/null for now, same no-op
+  # reasoning as the other companies. A large GC on multi-year builds is the
+  # most plausible candidate for min_bid_prep_days (big turnkey bids need
+  # real lead time) and for contract_starts_after/_before (pipeline
+  # planning around when a project actually breaks ground) once volume is
+  # visible.
+  # procurement_methods_allowed: null
+  # min_bid_prep_days: null
+  # reject_reserved_participation: false
+  # contract_starts_after: null
+  # contract_starts_before: null
 
   notes: "Large GC, turnkey building projects. Northern Germany only, high value floor, coordination not self-perform."
