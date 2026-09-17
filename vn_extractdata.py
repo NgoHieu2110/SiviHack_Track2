@@ -20,7 +20,7 @@ def run_export():
     max_notices = data.get("max", 10)
 
     # 2. Xây dựng câu truy vấn dựa trên địa điểm và ngày hiện tại
-    query_str = f"place-of-performance IN ({location}) AND deadline >= {today_str}"
+    query_str = f"classification-cpv = 45* AND place-of-performance IN ({location}) AND deadline >= {today_str}"
     outdir = "ted_export"
 
     # 3. Gọi câu lệnh Python trong CMD thông qua subprocess

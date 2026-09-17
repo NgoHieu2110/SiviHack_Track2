@@ -184,8 +184,13 @@ def fetch_fulltext(pub_number: str, session: requests.Session) -> str:
     try:
         resp = session.get(url, timeout=30, headers={"Accept": "text/html"})
         resp.raise_for_status()
+        
+        # --- THÊM DÒNG NÀY ĐỂ ÉP NHẬN DIỆN ĐÚNG BẢNG MÃ UTF-8 ---
+        resp.encoding = resp.apparent_encoding
+        
     except requests.RequestException as e:
         return f"(could not fetch full text: {e})"
+    
     # Keep just the main content area if we can find it, else the whole body.
     body_match = re.search(r"(?is)<main.*?</main>", resp.text)
     html = body_match.group(0) if body_match else resp.text
@@ -249,6 +254,14 @@ def main():
 
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
+
+    # --- THÊM ĐOẠN NÀY ĐỂ XÓA CÁC FILE .MD CŨ TRƯỚC KHI TẢI MỚI ---
+    for old_file in outdir.glob("*.md"):
+        try:
+            old_file.unlink()
+        except Exception as e:
+            print(f"Không thể xóa file cũ {old_file}: {e}", file=sys.stderr)
+    # -------------------------------------------------------------
 
     print(f"Querying TED Search API: {args.query!r}")
     notices = fetch_notices(args.query, args.fields, args.max)
