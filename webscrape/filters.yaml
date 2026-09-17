@@ -1,0 +1,241 @@
+# ============================================================================
+# webscrape/filters.yaml — tender-matching filters, one block per company
+# ============================================================================
+# This is the ONLY file you should need to edit to change which tenders get
+# picked up. It is not Python — edit it directly, save, and re-run:
+#
+#     python fetch_tenders.py
+#
+# Defaults below were derived from company_profiles.json (revenue, contract
+# size, operating region, stated exclusions). They are a starting point, not
+# gospel — loosen or tighten anything.
+#
+# ---- Field reference -------------------------------------------------------
+# display_name      Free text, used in output filenames/headers.
+# cpv_prefixes      List of CPV code prefixes. A tender matches if ANY of its
+#                   item CPV codes starts with ANY prefix here.
+#                   CPV browser: https://simap.ted.europa.eu/cpv
+# nuts_prefixes     List of NUTS region-code prefixes (Germany = DE...).
+#                   Matches if the tender's delivery region, buyer region, or
+#                   any listed party's region starts with ANY prefix here.
+#                   NUTS reference for Germany:
+#                     DE1 Baden-Württemberg   DE6 Hamburg
+#                     DE2 Bayern              DE7 Hessen
+#                     DE3 Berlin              DE8 Mecklenburg-Vorpommern
+#                     DE4 Brandenburg         DE9 Niedersachsen
+#                     DE5 Bremen              DEA Nordrhein-Westfalen
+#                     DEB Rheinland-Pfalz     DEC Saarland
+#                     DED Sachsen             DEE Sachsen-Anhalt
+#                     DEF Schleswig-Holstein  DEG Thüringen
+#                   Use a shorter prefix (e.g. "DE2") for a whole state, or a
+#                   longer one (e.g. "DE21") for a sub-region.
+# value_min         Minimum contract value in EUR. Use null for no floor.
+# value_max         Maximum contract value in EUR. Use null for no ceiling.
+# exclude_keywords  Case-insensitive substrings. If ANY appear anywhere in the
+#                   tender title/description/lot text, the notice is rejected
+#                   outright, no matter what else matches.
+# role_hint_reject  Same mechanics as exclude_keywords, but specifically for
+#                   phrases suggesting the tender's role/structure doesn't fit
+#                   (e.g. "seeking a subcontractor" when you only bid as GC).
+#                   Kept separate so you can tune role-fit independently of
+#                   hard capability exclusions.
+# notes             Free text, shown in the output markdown footer. Not used
+#                   for matching.
+# -----------------------------------------------------------------------------
+#
+# ---- Current state: SOFT / PROOF-OF-CONCEPT --------------------------------
+# All filters below are intentionally loosened right now (wide value bands,
+# state-level NUTS prefixes only, role_hint_reject emptied out). The point of
+# this pass is just to prove out the full set of fields we *could* filter on
+# -- not to get precise fit yet. Every field still carries its "if this is
+# too noisy/strict" comment so it's easy to tighten later.
+#
+# ---- How to diagnose later (once real output volume exists) ---------------
+# When it's time to tighten these again, the fields interact as a hard AND
+# (CPV match AND region match AND value-in-range AND no excluded keyword),
+# so the fastest way to see what's actually costing you matches is to log
+# *why* each candidate release was rejected, then look at the reject-reason
+# distribution per company, e.g.:
+#
+#   from collections import Counter
+#   reasons = Counter()
+#   for release in releases:
+#       ok, reason = matches_profile(release, profile)
+#       if not ok:
+#           reasons[reason.split(" (")[0].split("'")[0]] += 1
+#   print(reasons.most_common())
+#
+# matches_profile() in fetch_tenders.py already returns a human-readable
+# reason string for every rejection ("no CPV match", "no region match
+# (found: ...)", "value X below min Y", "excluded by keyword 'Z'", etc.) --
+# right now that reason is only used for the inline per-day match print, but
+# it's straightforward to tally instead of print, per company, to see which
+# single filter is doing most of the rejecting before deciding what to loosen
+# or re-tighten. In particular:
+#   - "no region match (found: none)" in the tally means the release simply
+#     had no NUTS code at all -- that's a data-coverage gap, not something
+#     narrowing nuts_prefixes will ever fix.
+#   - "no value found" similarly reflects releases with no tender.value and
+#     no lot values -- widening value_min/value_max won't help those either.
+#   - A high "no CPV match" count vs. low counts elsewhere means the CPV
+#     list itself is the binding constraint and is the one worth revisiting.
+# -----------------------------------------------------------------------------
+
+brenner_sohn_tiefbau:
+  display_name: "Brenner & Sohn Tiefbau GmbH"
+
+  # Services: road construction, sewers/pipelines, earthworks, municipal civil eng.
+  cpv_prefixes:
+    - "45233"     # road construction, foundation, surface works
+    - "45231300"  # water/sewage pipeline construction
+    - "452313"    # sub-codes of the above (mains, laterals, etc.)
+    - "45111"     # demolition, site prep, clearance (earthworks)
+    - "45112"     # excavating and earthmoving work
+
+  # operating_area: Bavaria, focus Schwaben/Oberbayern, 150km radius ("crews
+  # go home at night"). DE21/DE27 are the tight fit ("home turf"); kept SOFT
+  # for now at whole-state "DE2" only, since that's the loosest prefix that
+  # still keeps the company in-country. Tighten back to just DE21/DE27 (drop
+  # "DE2") once volume/diagnosis shows Bavaria-wide is pulling in too much
+  # travel-distance noise for a company whose whole model is "crews go home
+  # at night" within 150km.
+  nuts_prefixes:
+    - "DE2"   # all of Bavaria (soft) -- tighten to DE21/DE27 (Oberbayern/Schwaben) later
+
+  # contract_size_eur: min 400k / max 4M ("below this range overhead isn't
+  # worth it; above €5M they'd need a partner"). Note: guarantee_capacity_eur
+  # is 1.5M total at any one time per their bank — a real value_max should
+  # stay well under that if multiple contracts can be live at once. SOFT for
+  # now: widened well past the stated 400k-4M band so near-miss tenders
+  # aren't silently dropped while we're just proving out the filter set.
+  # Tighten back toward 400000 / 4000000 (or lower, toward the 1.5M
+  # guarantee ceiling) once real match volume is visible.
+  value_min: 150000
+  value_max: 6000000
+
+  # reference_projects.cannot_show: no rail qualification, no bridges, no
+  # work outside Germany.
+  exclude_keywords:
+    - "brücke"
+    - "brueck"
+    - "tunnel"
+    - "bahnsteig"
+    - "gleis"
+    - "schiene"
+    - "db infrago"
+    - "eisenbahn"
+    - "ausland"
+
+  # Heuristic: tenders phrased as a subcontract package rather than a
+  # standalone civil-works contract. SOFT for now (emptied out) -- this is
+  # the weakest/most speculative filter (plain-text substring match on
+  # German procurement jargon, easy to false-positive on), so it's the first
+  # thing to cut when trying to raise match volume, and the first place to
+  # look if output later turns out to contain a lot of subcontract-flavored
+  # packages that don't actually fit. Re-add "fachlos" / "nachunternehmer"
+  # once there's enough output to check the false-positive rate.
+  role_hint_reject: []
+
+  notes: "Regional civil contractor: roads, sewers, earthworks. Bavaria only, own machinery, no rail/bridges."
+
+
+elektro_vogtland:
+  display_name: "Elektro Vogtland GmbH"
+
+  # Services: electrical installation, power, lighting, fire alarm, building automation.
+  cpv_prefixes:
+    - "45310"  # electrical installation work (parent)
+    - "45311"  # wiring and fitting work
+    - "45312"  # alarm systems incl. fire alarm (45312100)
+    - "45315"  # electrical installation of heating/building-equipment (automation)
+    - "45316"  # illumination and signalling systems
+    - "45317"  # other electrical installation work
+
+  # operating_area: Saxony, Thuringia, eastern Bavaria, 200km radius.
+  # DE2 (all of Bavaria) is a loose stand-in for "eastern Bavaria" since NUTS
+  # doesn't split Bavaria east/west — refine to a sub-region (e.g. DE23
+  # Oberpfalz) if this pulls in too much of western Bavaria. Already the
+  # loosest reasonable option, kept as-is for the soft pass.
+  nuts_prefixes:
+    - "DED"  # Sachsen
+    - "DEG"  # Thüringen
+    - "DE2"  # eastern Bavaria stand-in (whole Bayern) - loose, refine if noisy
+
+  # contract_size_eur: min 80k / max 900k. This is the narrowest value band
+  # of the three companies, and combined with a specialist CPV list + a
+  # 3-state region, it's the most likely one to starve for matches. SOFT for
+  # now: widened past the stated band. Tighten back toward 80000 / 900000
+  # once diagnosis (see top of file) shows whether value is actually the
+  # binding constraint for this company or not.
+  value_min: 30000
+  value_max: 1500000
+
+  # reference_projects.cannot_show: high voltage, explosion-protected
+  # installations, acting as main contractor on a multi-trade job.
+  exclude_keywords:
+    - "hochspannung"
+    - "ex-schutz"
+    - "explosionsschutz"
+    - "atex"
+    - "generalunternehmer"
+
+  # Heuristic: tenders seeking a single turnkey/GC-role bidder, which doesn't
+  # fit a subcontractor-only specialist. SOFT for now (emptied out) -- same
+  # reasoning as brenner_sohn_tiefbau above: this is a text heuristic, not a
+  # real OCDS field, so it's the first thing to relax for volume and the
+  # first place to check for false positives once output exists.
+  role_hint_reject: []
+
+  notes: "Small electrical specialist, usually subcontractor. Saxony/Thuringia/east Bavaria, small contract sizes."
+
+
+hanseatische_bau:
+  display_name: "Hanseatische Bau AG"
+
+  # Services: building construction, turnkey projects, offices, schools,
+  # hospitals, housing, logistics.
+  cpv_prefixes:
+    - "45210"  # building construction work (parent)
+    - "45211"  # multi-dwelling / individual houses (residential quarters)
+    - "45213"  # commercial, warehouse, industrial, transport buildings (logistics)
+    - "45214"  # education & research buildings (schools, universities)
+    - "45215"  # health, social, recreational buildings (hospitals)
+
+  # operating_area: Northern Germany.
+  nuts_prefixes:
+    - "DE6"  # Hamburg
+    - "DE5"  # Bremen
+    - "DE9"  # Niedersachsen
+    - "DEF"  # Schleswig-Holstein
+    - "DE8"  # Mecklenburg-Vorpommern
+
+  # contract_size_eur: min 8M / max 90M ("below €5M overhead is disproportionate";
+  # 8M used here as the stated practical floor). NOTE: reference_projects also
+  # says "nothing in southern Germany in a decade" — already covered by
+  # nuts_prefixes above, not duplicated here. SOFT for now: floor dropped
+  # toward the €5M figure actually mentioned in their own quote, and ceiling
+  # raised, so borderline-sized notices aren't dropped outright. Tighten
+  # back to 8000000 / 90000000 (or even higher on the floor, since €8M was
+  # their stated practical threshold, not just the disproportionate-overhead
+  # line) once volume/diagnosis is in.
+  value_min: 5000000
+  value_max: 120000000
+
+  # reference_projects.cannot_show: civil engineering as lead contractor (no
+  # roads, sewers, bridges) — they're a building GC, not a civil-works GC.
+  exclude_keywords:
+    - "tiefbau"
+    - "straßenbau"
+    - "strassenbau"
+    - "kanalbau"
+    - "brückenbau"
+    - "sielbau"
+
+  # Heuristic: tenders demanding a high share of self-performed work don't
+  # fit a coordination-only GC ("what hurts us is a tender demanding a high
+  # share of self-performed work"). SOFT for now (emptied out) -- same
+  # reasoning as the other two companies: plain-text heuristic, first thing
+  # to relax for volume, first place to check for false positives later.
+  role_hint_reject: []
+
+  notes: "Large GC, turnkey building projects. Northern Germany only, high value floor, coordination not self-perform."
