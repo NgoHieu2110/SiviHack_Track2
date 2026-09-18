@@ -54,8 +54,8 @@ OUTPUT_ROOT = SCRIPT_DIR / "tenders"
 DEFAULT_FILTERS_PATH = SCRIPT_DIR / "filters.yaml"
 DEFAULT_LOG_DIR = SCRIPT_DIR.parent / "logs"
 
-DEFAULT_TARGET_COUNT = 7
-DEFAULT_MAX_DAYS_BACK = 60  # safety cap so a bad filter config can't loop forever
+DEFAULT_TARGET_COUNT = 2
+DEFAULT_MAX_DAYS_BACK = 8  # safety cap so a bad filter config can't loop forever
 
 LOGGER_NAME = "fetch_tenders_oeffentlichevergabe"
 

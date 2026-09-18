@@ -1,11 +1,11 @@
 {
-  "does": "Does: road construction, sewers and pipelines, earthworks, municipal civil engineering. Own\nmachinery.",
-  "placeOfPerformance": "Where: Bavaria, mainly Schwaben and Oberbayern, up to ~150 km from Augsburg — crews go home at night.",
-  "contractValueMin": "400000",
-  "contractValueMax": "4000000",
-  "exclusions": "• Financial limit: their bank supports guarantees up to about €1.5M in total at any one time.\nCannot show: anything rail-side (no DB qualification, no certified safety staff), no bridges, nothing\noutside Germany.",
-  "specifications": "a €2.9M state road rehabilitation, a district sewer renewal, several housing-estate site\ndevelopments,\n• Free from: March — two crews are committed until then.\nIn their words: \"We're reliable and we're local. We lose on price to the bigger players about half the\ntime. We want the jobs where the client cares that we turn up.\"",
-  "revenue": 31000000.0,
-  "employees": 140,
-  "submittedAt": "2026-09-18T11:06:18.262665+00:00"
+  "does": "Building",
+  "placeOfPerformance": "North Region",
+  "contractValueMin": "0",
+  "contractValueMax": "83838",
+  "exclusions": "",
+  "specifications": "",
+  "revenue": 893239.0,
+  "employees": 40,
+  "submittedAt": "2026-09-18T10:11:28.646816+00:00"
 }
