@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CONTRACT_NATURE_OPTIONS, type CompanyProfile } from "@/lib/tender-types"
+import { type CompanyProfile } from "@/lib/tender-types"
 import { Loader2, Search, RotateCcw } from "lucide-react"
 
 type Props = {
@@ -64,22 +64,6 @@ export function CompanyProfileForm({ profile, onChange, onSubmit, onReset, loadi
                 onChange={(e) => set("does", e.target.value)}
                 rows={3}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="nature">Contract Nature</Label>
-              <Select value={profile.contractNature} onValueChange={(v) => set("contractNature", v)}>
-                <SelectTrigger id="nature">
-                  <SelectValue placeholder="Select contract nature" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONTRACT_NATURE_OPTIONS.map((o) => (
-                    <SelectItem key={o} value={o}>
-                      {o}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-2">

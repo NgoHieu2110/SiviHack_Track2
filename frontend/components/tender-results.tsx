@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -28,12 +28,13 @@ type Props = {
   hasSearched: boolean
   selectedId: string | null
   onSelect: (id: string) => void
+  onViewDetails: (id: string) => void
 }
 
 /** Fixed geometry for the slot-machine reels. */
-const CARD_H = 300
-const ITEM_H = 340 // card + vertical gap; one "notch" of the reel
-const REEL_H = 560
+const CARD_H = 550 // taller focused card so it fills the right-side panel
+const ITEM_H = 520 // card + vertical gap; one "notch" of the reel
+const MIN_REEL_H = 560 // fallback height when no viewport height is available (mobile)
 
 function scoreColor(score: number) {
   if (score >= 75) return "text-emerald-600 dark:text-emerald-400"
@@ -58,6 +59,9 @@ function EmptyState({ loading }: { loading: boolean }) {
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             Matching your company against available public tenders and scoring each one.
           </p>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Matching your company against available public tenders and scoring each one.
+          </p>
         </>
       ) : (
         <>
@@ -66,6 +70,8 @@ function EmptyState({ loading }: { loading: boolean }) {
           </div>
           <h3 className="text-base font-semibold">Your top tenders will appear here</h3>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Complete your company profile on the left and run the match. Then spin each reel to roll through every
+            tender — whatever lands in the middle lane becomes your active pick.
             Complete your company profile on the left and run the match. Then spin each reel to roll through every
             tender — whatever lands in the middle lane becomes your active pick.
           </p>
@@ -82,23 +88,38 @@ function TenderCard({
   active,
   isSelected,
   onSelect,
+  onViewDetails,
 }: {
   match: TenderMatch
   index: number
   active: boolean
   isSelected: boolean
   onSelect: (id: string) => void
+  onViewDetails: (id: string) => void
 }) {
   const { tender, score, reasons, considerations, summary } = match
   return (
     <div
-      className={`flex h-[300px] w-full flex-col rounded-xl border bg-card shadow-lg transition-colors ${
-        isSelected
+      role={active ? "button" : undefined}
+      tabIndex={active ? 0 : -1}
+      onClick={active ? () => onViewDetails(tender.id) : undefined}
+      onKeyDown={
+        active
+          ? (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              onViewDetails(tender.id)
+            }
+          }
+          : undefined
+      }
+      className={`flex h-full w-full flex-col rounded-xl border bg-card shadow-lg transition-colors ${active ? "cursor-pointer hover:border-amber-400" : ""
+        } ${isSelected
           ? "border-amber-500 ring-2 ring-amber-500/50"
           : active
             ? "border-amber-400/80"
             : "border-border"
-      }`}
+        }`}
     >
       <div className="flex items-start justify-between gap-3 border-b p-3">
         <div className="min-w-0 space-y-1">
@@ -117,7 +138,7 @@ function TenderCard({
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto p-3">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
         <Progress value={score} className="h-1.5" />
 
         <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
@@ -182,18 +203,31 @@ function TenderCard({
         )}
       </div>
 
-      <div className="border-t p-3">
+      <div className="flex items-center gap-2 border-t p-3">
         <Button
-          variant={isSelected ? "default" : "outline"}
+          variant="outline"
           size="sm"
-          className="w-full"
+          className="flex-1"
           disabled={!active}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation()
+            onViewDetails(tender.id)
+          }}
+        >
+          {active ? "View details" : "Scroll into lane"}
+        </Button>
+        <Button
+          variant={isSelected ? "default" : "secondary"}
+          size="sm"
+          className="flex-1"
+          disabled={!active}
+          onClick={(e) => {
+            e.stopPropagation()
             onSelect(tender.id)
             toast.success(isSelected ? "Tender kept as selected" : `Selected "${tender.title}"`)
           }}
         >
-          {isSelected ? "Selected" : active ? "Choose this tender" : "Scroll into lane to choose"}
+          {isSelected ? "Selected" : "Choose"}
         </Button>
       </div>
     </div>
@@ -206,11 +240,15 @@ function ReelColumn({
   initialIndex,
   selectedId,
   onSelect,
+  onViewDetails,
+  reelHeight,
 }: {
   matches: TenderMatch[]
   initialIndex: number
   selectedId: string | null
   onSelect: (id: string) => void
+  onViewDetails: (id: string) => void
+  reelHeight: number
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -286,7 +324,7 @@ function ReelColumn({
     scrollRef.current?.scrollBy({ top: dir * ITEM_H, behavior: "smooth" })
   }
 
-  const pad = (REEL_H - ITEM_H) / 2
+  const pad = (reelHeight - ITEM_H) / 2
 
   return (
     <div className="relative">
@@ -303,7 +341,7 @@ function ReelColumn({
         ref={scrollRef}
         onScroll={onScroll}
         className="reel-scroll snap-y snap-mandatory overflow-y-auto overscroll-contain scroll-smooth [scrollbar-color:theme(colors.amber.400)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-400/70 [&::-webkit-scrollbar]:w-1.5"
-        style={{ height: REEL_H, perspective: "1000px" }}
+        style={{ height: reelHeight, perspective: "1000px" }}
       >
         <div style={{ height: pad }} aria-hidden="true" />
         {matches.map((match, i) => (
@@ -322,6 +360,7 @@ function ReelColumn({
                 active={i === active}
                 isSelected={selectedId === match.tender.id}
                 onSelect={onSelect}
+                onViewDetails={onViewDetails}
               />
             </div>
           </div>
@@ -341,7 +380,26 @@ function ReelColumn({
   )
 }
 
-export function TenderResults({ matches, loading, hasSearched, selectedId, onSelect }: Props) {
+export function TenderResults({ matches, loading, hasSearched, selectedId, onSelect, onViewDetails }: Props) {
+  // Measure the reel viewport so each column stretches to fill the available
+  // page height instead of a fixed pixel value.
+  const reelBoxRef = useRef<HTMLDivElement>(null)
+  const [reelHeight, setReelHeight] = useState(MIN_REEL_H)
+
+  useLayoutEffect(() => {
+    const el = reelBoxRef.current
+    if (!el) return
+    const measure = () => {
+      // clientHeight includes the p-4 padding (16px top + 16px bottom).
+      const inner = el.clientHeight - 32
+      setReelHeight(Math.max(MIN_REEL_H, inner))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [loading, hasSearched, matches.length])
+
   if (loading || !hasSearched) {
     return <EmptyState loading={loading} />
   }
@@ -360,7 +418,7 @@ export function TenderResults({ matches, loading, hasSearched, selectedId, onSel
   const starts = [0, Math.min(1, matches.length - 1), Math.min(2, matches.length - 1)]
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-amber-500" />
@@ -374,13 +432,16 @@ export function TenderResults({ matches, loading, hasSearched, selectedId, onSel
         </span>
       </div>
 
-      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-b from-muted/40 via-background to-muted/40 p-4">
+      <div
+        ref={reelBoxRef}
+        className="relative min-h-[560px] flex-1 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-b from-muted/40 via-background to-muted/40 p-4"
+      >
         {/* top / bottom fade masks to sell the drum curvature */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-20 bg-gradient-to-b from-background to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-20 bg-gradient-to-t from-background to-transparent" />
 
         {/* active selector lane, centered on the reels */}
-        <div className="pointer-events-none absolute inset-x-3 top-1/2 z-0 h-[312px] -translate-y-1/2 rounded-2xl border-y-2 border-amber-400/70 bg-amber-50/40 dark:border-amber-500/30 dark:bg-amber-500/5" />
+        <div className="pointer-events-none absolute inset-x-3 top-1/2 z-0 h-[492px] -translate-y-1/2 rounded-2xl border-y-2 border-amber-400/70 bg-amber-50/40 dark:border-amber-500/30 dark:bg-amber-500/5" />
 
         <div className="relative z-10 grid grid-cols-3 gap-3">
           {starts.map((start, col) => (
@@ -390,6 +451,8 @@ export function TenderResults({ matches, loading, hasSearched, selectedId, onSel
               initialIndex={start}
               selectedId={selectedId}
               onSelect={onSelect}
+              onViewDetails={onViewDetails}
+              reelHeight={reelHeight}
             />
           ))}
         </div>

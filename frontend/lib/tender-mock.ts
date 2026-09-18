@@ -122,12 +122,20 @@ function parseNumber(value: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-function cpvFamily(code: string) {
-  return code.replace(/[^0-9]/g, "").slice(0, 4)
-}
-
 function currency(value: number, code = "EUR") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: code, maximumFractionDigits: 0 }).format(value)
+}
+
+function keywords(text: string): string[] {
+  return Array.from(
+    new Set(
+      text
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .map((t) => t.trim())
+        .filter((t) => t.length > 3),
+    ),
+  )
 }
 
 /**
@@ -144,37 +152,24 @@ export function matchTenders(profile: CompanyProfile): TenderMatch[] {
     const reasons: string[] = []
     const considerations: string[] = []
 
-    // What the company does — free-text match against the tender
-    if (profile.does.trim()) {
-      const terms = profile.does
-        .toLowerCase()
-        .split(/[,;\n]/)
-        .map((t) => t.trim())
-        .filter(Boolean)
-      const haystack = `${tender.title} ${tender.description} ${tender.cpvLabel}`.toLowerCase()
-      const hits = terms.filter((t) => haystack.includes(t))
-      if (hits.length > 0) {
-        score += Math.min(22, hits.length * 8)
-        reasons.push(`Your activity ("${hits.join(", ")}") aligns with the scope of this tender.`)
-      } else {
-        considerations.push("The tender scope does not obviously match your stated activity.")
-      }
-    }
+    const tenderText =
+      `${tender.title} ${tender.description} ${tender.cpvLabel} ${tender.contractNature}`.toLowerCase()
 
-    // Contract nature
-    if (profile.contractNature) {
-      if (tender.contractNature === profile.contractNature) {
-        score += 12
-        reasons.push(`Contract nature is "${tender.contractNature}", matching your selected preference.`)
+    // What the company does — activity / sector fit
+    if (profile.does.trim()) {
+      const hits = keywords(profile.does).filter((t) => tenderText.includes(t))
+      if (hits.length > 0) {
+        score += Math.min(24, hits.length * 8)
+        reasons.push(`Your described activity matches this tender's scope (${hits.slice(0, 3).join(", ")}).`)
       } else {
-        considerations.push(`Contract nature is "${tender.contractNature}" while you selected "${profile.contractNature}".`)
+        considerations.push("Tender scope does not clearly overlap with your described activity.")
       }
     }
 
     // Place of performance
-    if (profile.placeOfPerformance) {
+    if (profile.placeOfPerformance.trim()) {
       if (tender.location.toLowerCase().includes(profile.placeOfPerformance.toLowerCase().trim())) {
-        score += 12
+        score += 14
         reasons.push(`Located in ${tender.location}, matching your area of operation.`)
       } else {
         considerations.push(`Place of performance is ${tender.location}, outside your stated area.`)
@@ -186,7 +181,7 @@ export function matchTenders(profile: CompanyProfile): TenderMatch[] {
       const aboveMin = minValue === null || tender.value >= minValue
       const belowMax = maxValue === null || tender.value <= maxValue
       if (aboveMin && belowMax) {
-        score += 14
+        score += 16
         reasons.push(`Contract value of ${currency(tender.value, tender.currency)} sits inside your target range.`)
       } else if (!belowMax) {
         considerations.push(`Value ${currency(tender.value, tender.currency)} exceeds your maximum — may require a consortium.`)
@@ -195,41 +190,38 @@ export function matchTenders(profile: CompanyProfile): TenderMatch[] {
       }
     }
 
-    // Specifications — free-text match against the tender description
+    // Specifications — capability fit
     if (profile.specifications.trim()) {
-      const terms = profile.specifications
-        .toLowerCase()
-        .split(/[,;\n]/)
-        .map((t) => t.trim())
-        .filter(Boolean)
-      const haystack = `${tender.title} ${tender.description}`.toLowerCase()
-      const hits = terms.filter((t) => haystack.includes(t))
+      const hits = keywords(profile.specifications).filter((t) => tenderText.includes(t))
       if (hits.length > 0) {
-        score += Math.min(10, hits.length * 5)
-        reasons.push(`Your specifications ("${hits.join(", ")}") appear in the tender requirements.`)
+        score += Math.min(12, hits.length * 6)
+        reasons.push(`Matches your stated specifications (${hits.slice(0, 3).join(", ")}).`)
       }
     }
 
-    // Revenue — a rough capacity check against the contract value
+    // Company capacity — annual revenue vs contract value
     if (profile.revenue > 0) {
-      if (profile.revenue >= tender.value) {
-        score += 8
-        reasons.push(`Your annual revenue comfortably exceeds the contract value of ${currency(tender.value, tender.currency)}.`)
-      } else if (profile.revenue * 3 >= tender.value) {
-        score += 3
-        considerations.push(`Contract value ${currency(tender.value, tender.currency)} is large relative to your revenue — plan cash flow carefully.`)
+      const ratio = tender.value / profile.revenue
+      if (ratio <= 1) {
+        score += 10
+        reasons.push(`Contract value is within your annual revenue — a comfortable financial fit.`)
+      } else if (ratio <= 2) {
+        score += 4
+        considerations.push(`Contract value is ${ratio.toFixed(1)}× your annual revenue — manageable but demanding.`)
       } else {
-        considerations.push(`Contract value ${currency(tender.value, tender.currency)} may be too large for your current revenue.`)
+        score -= 6
+        considerations.push(`Contract value is ${ratio.toFixed(1)}× your annual revenue — likely needs a consortium.`)
       }
     }
 
-    // Employees — a rough capacity check against the contract size
+    // Company capacity — workforce vs contract scale
     if (profile.employees > 0) {
-      if (tender.value > 5_000_000 && profile.employees < 50) {
-        considerations.push(`A contract of ${currency(tender.value, tender.currency)} may require more than your ${profile.employees} staff.`)
+      const expected = Math.max(1, Math.ceil(tender.value / 250_000))
+      if (profile.employees >= expected) {
+        score += 6
+        reasons.push(`Your team of ${profile.employees} is sized for a contract of this scale.`)
       } else {
-        score += 4
-        reasons.push(`Your team of ${profile.employees} is a reasonable fit for the scale of this contract.`)
+        considerations.push(`A contract this size typically needs ~${expected} staff; you listed ${profile.employees}.`)
       }
     }
 
@@ -261,7 +253,9 @@ export function matchTenders(profile: CompanyProfile): TenderMatch[] {
     return { tender, score, reasons, considerations, summary }
   })
 
-  return matches.sort((a, b) => b.score - a.score).slice(0, 3)
+  // Return every scored tender, best first. The UI locks the top 3 into the
+  // focus lane and dims the rest above/below as "others".
+  return matches.sort((a, b) => b.score - a.score)
 }
 
 export function formatCurrency(value: number, code = "EUR") {

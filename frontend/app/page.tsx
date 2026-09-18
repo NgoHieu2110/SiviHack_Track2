@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { CompanyProfileForm } from "@/components/company-profile-form"
 import { TenderResults } from "@/components/tender-results"
-import { matchTendersRequest, ApiError } from "@/lib/api"
+import { TenderDetailSheet } from "@/components/tender-detail-sheet"
+import { matchTenders } from "@/lib/tender-mock"
 import type { CompanyProfile, TenderMatch } from "@/lib/tender-types"
 import { HardHat } from "lucide-react"
 import { toast } from "sonner"
@@ -26,14 +27,18 @@ export default function Page() {
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [progressMessages, setProgressMessages] = useState<string[]>([])
+  const [detailId, setDetailId] = useState<string | null>(null)
 
-  const handleSubmit = async () => {
+  const detailMatch = matches.find((m) => m.tender.id === detailId) ?? null
+
+  const handleSubmit = () => {
     const filledFields = Object.values(profile).filter((v) => {
       if (Array.isArray(v)) return v.length > 0
       if (typeof v === "number") return v > 0
-      return v.trim() !== ""
+      if (typeof v === "string") return v.trim() !== ""
+      return Boolean(v)
     }).length
+
     if (filledFields < 2) {
       toast.error("Please fill in at least a couple of fields to get a meaningful match.")
       return
@@ -42,21 +47,12 @@ export default function Page() {
     setLoading(true)
     setHasSearched(true)
     setSelectedId(null)
-    setProgressMessages([])
-    try {
-      const results = await matchTendersRequest(profile, (event) => {
-        setProgressMessages((prev) => [...prev, event.message])
-      })
-      setMatches(results)
-      toast.success(`Found your ${results.length} best-matched tenders.`)
-    } catch (error) {
-      setMatches([])
-      const message =
-        error instanceof ApiError ? error.message : "Something went wrong while matching tenders."
-      toast.error(message)
-    } finally {
+    // Simulate a backend/AI round-trip with mock data.
+    setTimeout(() => {
+      setMatches(matchTenders(profile))
       setLoading(false)
-    }
+      toast.success("Found your 3 best-matched tenders.")
+    }, 1100)
   }
 
   const handleReset = () => {
@@ -64,7 +60,6 @@ export default function Page() {
     setMatches([])
     setHasSearched(false)
     setSelectedId(null)
-    setProgressMessages([])
   }
 
   return (
@@ -82,8 +77,8 @@ export default function Page() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-          <div className="lg:sticky lg:top-6 lg:self-start">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+          <div>
             <CompanyProfileForm
               profile={profile}
               onChange={setProfile}
@@ -93,18 +88,34 @@ export default function Page() {
             />
           </div>
 
-          <section aria-label="Matched tenders">
+          <section
+            aria-label="Matched tenders"
+            className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)]"
+          >
             <TenderResults
               matches={matches}
               loading={loading}
               hasSearched={hasSearched}
               selectedId={selectedId}
               onSelect={setSelectedId}
-              progressMessages={progressMessages}
+              onViewDetails={setDetailId}
             />
           </section>
         </div>
       </main>
+
+      <TenderDetailSheet
+        match={detailMatch}
+        open={detailId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailId(null)
+        }}
+        isSelected={detailMatch ? selectedId === detailMatch.tender.id : false}
+        onSelect={(id) => {
+          setSelectedId(id)
+          toast.success("Tender selected.")
+        }}
+      />
     </div>
   )
 }
