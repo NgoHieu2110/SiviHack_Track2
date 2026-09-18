@@ -1,488 +1,285 @@
 """
-FastAPI backend for tender matching.
+backend/workflow_tools/tender_index.py
 
-Run with:
-    uvicorn main:app --reload --port 8000
+Shared helpers for reading/writing the index.json that lives at
+backend/tenders/index.json, alongside the raw tender markdown files
+(<notice_id>.md, written by fetch_tenders_oeffentlichevergabe.py).
+backend/tenders/ is the only tender store for the one company this backend
+is configured for, and the raw per-tender .md file is what gets sent to
+the frontend.
 
-Then in your Next.js frontend .env.local:
-    NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+index.json shape:
+{
+  "updated_at": "<iso timestamp>",
+  "tenders": {
+    "<notice_id>": {
+      "priority": 3,
+      "first_seen_run": "<iso timestamp>",
+      "last_seen_run": "<iso timestamp>",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "title": "...", "authority": "...", "value": 123.0,
+      "currency": "EUR", "deadline": "2026-10-01",
+      "tolerance": {"cpv": 0.3, "nuts": 0.3, "value": 0.3,
+                     "exclude": 0.0, "role_hint": 0.7}
+    },
+    ...
+  }
+}
 
-The frontend's api.ts posts to `${API_BASE_URL}/tenders/match` -- that's
-exactly the route defined below.
+"tolerance" is a snapshot of the filters.yaml dials in effect when this
+tender was FIRST matched (see extract_tolerance() / sync_index_with_folder())
+-- it is captured once and never refreshed on later runs, since different
+tenders can accumulate on disk under different tolerance settings over
+time (filters.yaml gets re-tuned between runs; see
+8_change_filter_tolerance.py). {} means the tender predates this field.
 
-WHAT /tenders/match DOES NOW
------------------------------
-This backend is configured for a single company -- there is no per-visitor
-company_key or live-search isolation. POST /tenders/match runs the *entire*
-workflow pipeline live, for the one company profile just submitted, and
-streams progress back to the browser as Server-Sent Events
-(`text/event-stream`) over the same POST response body:
+PRIORITY RULES (see conversation with the user for the source of these):
+  - A tender's notice_id doubles as its id everywhere (it's already the
+    .md filename and release["id"]).
+  - Every time 3_run_filter_for_tenders.py runs, every tender whose .md
+    file is still on disk gets priority += 1. A tender seen for the first
+    time this run starts at priority = 1 (not incremented an extra time in
+    the same run).
+  - 5_select_tenders.py picks the highest-priority tenders. Selecting a
+    tender resets its priority back to 0 (see mark_selected()) so it
+    doesn't just keep winning every future selection -- this half of the
+    behavior wasn't explicitly specified, it's this module's assumption
+    about how "select from the highest priority" should behave end-to-end.
+    Flip it out easily if that's not what's wanted.
+  - 6_user_select_remove_tenders.py marks a tender "removed" when the user
+    dismisses it (see mark_removed()): its priority drops to
+    REMOVED_PRIORITY (below anything a normal run would ever produce) and
+    it's permanently excluded from pick_top(), so it can never be
+    reselected. Unlike the "file no longer on disk" case below, a removed
+    tender's index entry is deliberately KEPT (not deleted) as a seen/
+    rejected history, even though its .md file has moved out to
+    tenders_seen/ and is therefore no longer "on disk" from this module's
+    point of view.
+  - Any other index entry is dropped if its .md file is no longer present
+    on disk (e.g. manually deleted, moved by something other than the
+    removal flow above).
 
-    1. Overwrite company_details.json with the submitted profile (a single
-       flat object -- see 1_company_md_to_company_details.py's schema for
-       context). Submitting a new profile replaces whatever company was
-       there before.
-    2. workflow_tools/2_company_details_to_initial_filter.py: ask Gemini to
-       turn that profile into filters.yaml (CPV/NUTS prefixes, value range,
-       exclusions, role hints).
-    3. workflow_tools/3_run_filter_for_tenders.py: walk oeffentlichevergabe.de
-       backward day by day until PIPELINE_TARGET_COUNT tenders match, or
-       PIPELINE_MAX_DAYS_BACK is hit. This also updates
-       backend/tenders/index.json (priority bookkeeping -- see
-       tender_index.py).
-    4. workflow_tools/5_select_tenders.py: pick PIPELINE_SELECT_COUNT of the
-       highest-priority tenders from index.json and return each one's full
-       raw markdown.
-
-    There is no more standardization stage -- backend/standardized_tenders/
-    and 4_standardize_tenders.py have been removed. backend/tenders/ is now
-    the only tender store, and what's sent to the frontend is each selected
-    tender's raw .md content rather than a parsed/standardized JSON record.
-
-PIPELINE_LOCK serializes /tenders/match and /tenders/remove calls (see its
-own comment below) -- since there's only one shared company_details.json /
-filters.yaml / tenders/ store, concurrent submissions would otherwise step
-on each other's state rather than just being slow.
-
-Each SSE event is one line of JSON after "data: ":
-    {"type": "progress", "stage": "...", "message": "..."}   (many)
-    {"type": "done", "matches": [...]}                         (one, on success)
-    {"type": "error", "message": "..."}                        (one, on failure)
-
-This is a genuinely slow, external-API-bound operation (a Gemini call plus
-however many days of oeffentlichevergabe.de fetches it takes), which is why
-it streams progress rather than returning a single blocking JSON response.
-
-Also exposes POST /admin/save-company-profile, which writes whatever
-CompanyProfile is POSTed to it into company_details.json directly, without
-running the rest of the pipeline -- useful for updating the company profile
-that a scheduled/batch run of workflow_tools 2-3-5 will pick up later,
-without immediately kicking off a live fetch.
+The cached metadata fields (title/authority/value/currency/deadline) are
+NOT a replacement for the .md file -- they exist purely so something can
+list/sort what's in the index without re-reading and re-parsing every raw
+release JSON. The .md file's embedded OCDS JSON remains the single source
+of truth.
 """
-
-from __future__ import annotations
-
-import contextlib
-import importlib.util
 import json
-import os
-import queue
-import sys
-import threading
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from dotenv import load_dotenv
+JSON_BLOCK_RE = re.compile(r"## Full raw release JSON\s*```json\s*(.*?)```", re.DOTALL)
+TOLERANCE_BLOCK_RE = re.compile(r"## Filter tolerance at match time\s*.*?```json\s*(.*?)```", re.DOTALL)
+INDEX_FILENAME = "index.json"
 
-load_dotenv()
-
-from fastapi import FastAPI, HTTPException  # noqa: E402
-from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
-from fastapi.responses import StreamingResponse  # noqa: E402
-
-from models import CompanyProfile  # noqa: E402
-from pydantic import BaseModel  # noqa: E402
-
-# ---------------------------------------------------------------------------
-# Paths. Defaults assume the layout documented in 3_run_filter_for_tenders.py:
-#
-#   backend/
-#     main.py                      <- this file
-#     oeffentlichevergabe/
-#       fetch_tenders_oeffentlichevergabe.py
-#     workflow_tools/
-#       1_company_md_to_company_details.py
-#       2_company_details_to_initial_filter.py
-#       3_run_filter_for_tenders.py
-#       5_select_tenders.py
-#       tender_index.py
-#       company_details.json
-#       filters.yaml
-#     tenders/                     <- raw fetch output + index.json
-#     tenders_seen/                <- dismissed tenders
-#
-# Every path is overridable via env var if your layout differs.
-# ---------------------------------------------------------------------------
-
-BASE_DIR = Path(__file__).resolve().parent
-WORKFLOW_TOOLS_DIR = Path(os.environ.get("WORKFLOW_TOOLS_DIR", BASE_DIR / "workflow_tools"))
-FETCH_MODULE_PATH = Path(
-    os.environ.get("FETCH_MODULE_PATH", BASE_DIR / "oeffentlichevergabe" / "fetch_tenders_oeffentlichevergabe.py")
-)
-COMPANY_DETAILS_PATH = Path(os.environ.get("COMPANY_DETAILS_PATH", WORKFLOW_TOOLS_DIR / "company_details.json"))
-FILTERS_PATH = Path(os.environ.get("FILTERS_PATH", WORKFLOW_TOOLS_DIR / "filters.yaml"))
-TENDERS_DIR = Path(os.environ.get("TENDERS_DIR", BASE_DIR / "tenders"))
-TENDERS_SEEN_DIR = Path(os.environ.get("TENDERS_SEEN_DIR", BASE_DIR / "tenders_seen"))
-
-FILTER_SCRIPT_PATH = Path(os.environ.get("FILTER_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "2_company_details_to_initial_filter.py"))
-FETCH_FILTER_RUNNER_PATH = Path(os.environ.get("FETCH_FILTER_RUNNER_PATH", WORKFLOW_TOOLS_DIR / "3_run_filter_for_tenders.py"))
-SELECT_SCRIPT_PATH = Path(os.environ.get("SELECT_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "5_select_tenders.py"))
-REMOVE_SCRIPT_PATH = Path(os.environ.get("REMOVE_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "6_user_select_remove_tenders.py"))
-
-ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
-    if origin.strip()
-]
-
-# How many tenders the fetch stage tries to collect before we pick
-# PIPELINE_SELECT_COUNT of them, how many days back it's allowed to walk to
-# get there, and how many we finally show. Kept small by default since this
-# now runs live, in the request path.
-PIPELINE_TARGET_COUNT = int(os.environ.get("PIPELINE_TARGET_COUNT", "6"))
-PIPELINE_MAX_DAYS_BACK = int(os.environ.get("PIPELINE_MAX_DAYS_BACK", "60"))
-PIPELINE_SELECT_COUNT = int(os.environ.get("PIPELINE_SELECT_COUNT", "3"))
-
-app = FastAPI(title="Tender Matching API")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Only one pipeline run at a time. This isn't just about not hammering the
-# external API concurrently -- stage output is captured by temporarily
-# redirecting the process's sys.stdout (see QueueWriter below), which is a
-# global, so two pipelines running at once would interleave/scramble each
-# other's progress messages. It also protects the single shared
-# company_details.json / filters.yaml / tenders/ store from being read and
-# written by two requests at once.
-PIPELINE_LOCK = threading.Lock()
+# Sentinel priority assigned to a removed/dismissed tender -- deliberately
+# lower than anything a normal run could produce (new tenders start at 1,
+# and mark_selected() floors out at 0), so a removed tender can never
+# accidentally out-rank a live one even if pick_top()'s explicit
+# `removed` check were ever bypassed.
+REMOVED_PRIORITY = -1
 
 
-# ---------------------------------------------------------------------------
-# Loading the numbered workflow_tools scripts. Their filenames start with a
-# digit, so they can't be `import`-ed normally -- same importlib pattern
-# those scripts already use internally to load each other.
-# ---------------------------------------------------------------------------
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
-def load_module(name: str, path: Path):
-    path = Path(path)
+
+def index_path(tenders_dir) -> Path:
+    return Path(tenders_dir) / INDEX_FILENAME
+
+
+def load_index(tenders_dir) -> dict:
+    path = index_path(tenders_dir)
     if not path.exists():
-        raise FileNotFoundError(f"required workflow script not found: {path}")
-    # 2_company_details_to_initial_filter.py does `from common import
-    # get_gemini_api_key`, a plain top-level import that only resolves if
-    # its own folder is on sys.path.
-    workflow_dir = str(path.parent)
-    if workflow_dir not in sys.path:
-        sys.path.insert(0, workflow_dir)
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+        return {"tenders": {}}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    data.setdefault("tenders", {})
+    return data
 
 
-filter_module = load_module("details_to_filter", FILTER_SCRIPT_PATH)
-run_filter_module = load_module("run_filter_for_tenders", FETCH_FILTER_RUNNER_PATH)
-select_module = load_module("select_tenders", SELECT_SCRIPT_PATH)
-remove_module = load_module("user_select_remove_tenders", REMOVE_SCRIPT_PATH)
-
-
-# ---------------------------------------------------------------------------
-# company_details.json persistence
-# ---------------------------------------------------------------------------
-
-def save_company_profile(profile: CompanyProfile) -> dict:
-    """Writes the submitted CompanyProfile to company_details.json as a
-    single flat object, overwriting whatever was there before -- there is
-    only one company per backend instance, not a list. Returns the saved
-    record."""
-    record = profile.model_dump()
-    record["submittedAt"] = datetime.now(timezone.utc).isoformat()
-
-    COMPANY_DETAILS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    COMPANY_DETAILS_PATH.write_text(
-        json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8"
+def save_index(tenders_dir, data: dict) -> None:
+    data["updated_at"] = _now_iso()
+    index_path(tenders_dir).write_text(
+        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
-    return record
+
+def extract_release_json(md_text: str) -> dict:
+    match = JSON_BLOCK_RE.search(md_text)
+    if not match:
+        raise ValueError("no '## Full raw release JSON' fenced block found")
+    return json.loads(match.group(1))
 
 
-# ---------------------------------------------------------------------------
-# Progress streaming plumbing
-# ---------------------------------------------------------------------------
-
-class QueueWriter:
-    """File-like object that forwards written lines to a queue.Queue as SSE
-    progress events. Used via contextlib.redirect_stdout to capture the
-    workflow scripts' existing print() calls in near-real time, without
-    having to edit those scripts to accept a callback."""
-
-    def __init__(self, q: "queue.Queue", stage: str):
-        self._q = q
-        self._stage = stage
-        self._buffer = ""
-
-    def write(self, text: str):
-        self._buffer += text
-        while "\n" in self._buffer:
-            line, self._buffer = self._buffer.split("\n", 1)
-            line = line.strip()
-            if line:
-                self._q.put({"type": "progress", "stage": self._stage, "message": line})
-
-    def flush(self):
-        pass
-
-
-def run_stage(q: "queue.Queue", stage: str, label: str, fn, *args, **kwargs):
-    """Emit a human-readable label, then run fn with its stdout captured
-    into progress events tagged with `stage`. Converts the workflow
-    scripts' sys.exit()-on-bad-input calls into a normal exception instead
-    of killing the API process."""
-    q.put({"type": "progress", "stage": stage, "message": label})
-    writer = QueueWriter(q, stage)
+def extract_tolerance(md_text: str) -> dict:
+    """Pulls the per-criterion tolerance dict out of a tender's "## Filter
+    tolerance at match time" block (see
+    fetch_tenders_oeffentlichevergabe.py's render_markdown()). Returns {}
+    (not an error) if the block is absent -- this is expected for any
+    tender fetched before that field existed, and callers should treat
+    that as "unknown", not "broken"."""
+    match = TOLERANCE_BLOCK_RE.search(md_text)
+    if not match:
+        return {}
     try:
-        with contextlib.redirect_stdout(writer):
-            return fn(*args, **kwargs)
-    except SystemExit as e:
-        raise RuntimeError(f"{label} -- {e}") from e
+        return json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return {}
 
 
-def format_sse(payload: dict) -> str:
-    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+def _extract_value(release: dict):
+    tender = release.get("tender", {}) or {}
+    val = tender.get("value", {}) or {}
+    amount, currency = val.get("amount"), val.get("currency")
+    if amount is not None:
+        return amount, currency
+    total, found, lot_currency = 0.0, False, None
+    for lot in tender.get("lots", []) or []:
+        lv = lot.get("value") or {}
+        if lv.get("amount") is not None:
+            total += lv["amount"]
+            lot_currency = lv.get("currency", lot_currency)
+            found = True
+    return (total, lot_currency) if found else (None, None)
 
 
-# ---------------------------------------------------------------------------
-# Turning a selected tender + the submitted profile into a match record for
-# the frontend.
-#
-# PLACEHOLDER, PENDING REDESIGN: the old version of this built a 50-97 score
-# and reasons/considerations off standardized fields (tender.value,
-# tender.location, tender.contractNature, tender.requiredCertificates, ...)
-# that came from 4_standardize_tenders.py. That stage is gone -- a selected
-# tender is now just {id, title, authority, value, currency, deadline,
-# priority, markdown} (see 5_select_tenders.py) -- so most of that scoring
-# logic no longer has inputs to work with. Scoring/reasons are intentionally
-# left minimal here until that's redesigned; this just passes the raw
-# markdown through with a couple of cached display fields on top.
-# No LLM call here either way -- the tender already passed the
-# Gemini-generated filters.yaml block earlier in the pipeline.
-# ---------------------------------------------------------------------------
-
-def build_match(tender_dict: dict, profile: CompanyProfile) -> dict:
-    title = tender_dict.get("title") or "This tender"
-    authority = tender_dict.get("authority") or "the contracting authority"
-
+def extract_metadata(release: dict) -> dict:
+    """Cheap display metadata cached into index.json. See module docstring
+    -- this is intentionally not the full standardized schema
+    4_standardize_tenders.py used to build."""
+    tender = release.get("tender", {}) or {}
+    amount, currency = _extract_value(release)
+    end_date = (tender.get("tenderPeriod", {}) or {}).get("endDate")
     return {
-        "tender": tender_dict,  # includes "markdown": full raw tender .md content
-        "score": None,  # TODO: redesign now that standardized fields are gone
-        "reasons": ["Passed the CPV, region and value filters generated from your company profile."],
-        "considerations": [],
-        "summary": (
-            f"{title}, published by {authority}, was pulled in by the tender filter "
-            f"generated from your company profile and is worth a closer look."
-        ),
+        "title": tender.get("title"),
+        "authority": (release.get("buyer", {}) or {}).get("name"),
+        "value": amount,
+        "currency": currency,
+        "deadline": end_date.split("T")[0] if isinstance(end_date, str) and end_date else None,
     }
 
 
-# ---------------------------------------------------------------------------
-# The pipeline itself
-# ---------------------------------------------------------------------------
+def sync_index_with_folder(tenders_dir) -> dict:
+    """Call after a fetch run. Walks every <notice_id>.md currently in
+    tenders_dir and:
+      - adds any notice_id not yet indexed, at priority=1
+      - bumps priority by 1 for every notice_id already indexed
+      - refreshes cached metadata + last_seen_run for all of them
+      - drops index entries whose .md file is no longer present
+    Saves and returns the updated index dict.
+    """
+    tenders_dir = Path(tenders_dir)
+    data = load_index(tenders_dir)
+    tenders = data["tenders"]
 
-def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> list[dict]:
-    q.put({"type": "progress", "stage": "starting", "message": "Starting your tender search..."})
+    on_disk = {p.stem for p in tenders_dir.glob("*.md")}
 
-    run_stage(
-        q, "saving_profile", "Saving your company profile...",
-        save_company_profile, profile,
-    )
+    # Drop stale entries (file was removed/moved outside the removal flow
+    # below) -- but NEVER drop a `removed` entry just because its .md file
+    # is (by design) no longer in this folder; that's what distinguishes a
+    # deliberately-removed tender from an orphaned index row.
+    for stale_id in list(set(tenders) - on_disk):
+        if not tenders[stale_id].get("removed"):
+            del tenders[stale_id]
 
-    run_stage(
-        q, "building_filter",
-        "Working out which tender categories and regions fit your company "
-        "(this calls Gemini and can take a moment)...",
-        filter_module.run,
-        input_path=str(COMPANY_DETAILS_PATH),
-        out_path=str(FILTERS_PATH),
-    )
-
-    run_stage(
-        q, "fetching_tenders",
-        f"Searching oeffentlichevergabe.de for matching tenders "
-        f"(up to {PIPELINE_MAX_DAYS_BACK} days back)...",
-        run_filter_module.run_filter_for_tenders,
-        filters_path=FILTERS_PATH,
-        fetch_module_path=FETCH_MODULE_PATH,
-        output_dir=TENDERS_DIR,
-        tenders_seen_dir=TENDERS_SEEN_DIR,
-        target=PIPELINE_TARGET_COUNT,
-        max_days=PIPELINE_MAX_DAYS_BACK,
-    )
-
-    q.put({"type": "progress", "stage": "selecting", "message": "Picking your top tenders..."})
-    try:
-        selected = select_module.select_tenders(
-            count=PIPELINE_SELECT_COUNT,
-            tenders_dir=TENDERS_DIR,
-        )
-    except (FileNotFoundError, ValueError) as e:
-        raise RuntimeError(
-            "No tenders matched your profile within the search window. "
-            "Try broadening your specifications or contract value range."
-        ) from e
-
-    q.put({"type": "progress", "stage": "done", "message": f"Found {len(selected)} tender(s)."})
-    return [build_match(t, profile) for t in selected]
-
-
-def pipeline_event_stream(profile: CompanyProfile):
-    q: "queue.Queue" = queue.Queue()
-    result: dict = {}
-
-    def worker():
+    now = _now_iso()
+    for notice_id in sorted(on_disk):
+        md_path = tenders_dir / f"{notice_id}.md"
+        md_text = md_path.read_text(encoding="utf-8")
         try:
-            with PIPELINE_LOCK:
-                result["matches"] = run_pipeline(profile, q)
-        except Exception as e:  # surfaced to the client as an error event, not a 500
-            result["error"] = str(e)
-        finally:
-            q.put(None)  # sentinel: no more events
-
-    threading.Thread(target=worker, daemon=True).start()
-
-    while True:
-        item = q.get()
-        if item is None:
-            break
-        yield format_sse(item)
-
-    if "error" in result:
-        yield format_sse({"type": "error", "message": result["error"]})
-    else:
-        yield format_sse({
-            "type": "done",
-            "matches": result.get("matches", []),
-        })
-
-
-# ---------------------------------------------------------------------------
-# Removing a tender the user dismissed. Much shorter than the match
-# pipeline (no external API calls) but follows the same
-# progress-over-SSE + single-lock pattern for consistency, and because
-# run_stage()'s stdout capture is process-global (see PIPELINE_LOCK's own
-# comment) -- a removal running concurrently with a match pipeline would
-# scramble both their progress streams otherwise.
-# ---------------------------------------------------------------------------
-
-class RemoveTenderRequest(BaseModel):
-    markdown: str  # full raw tender markdown, as returned by /tenders/match's
-                    # "matches"[i].tender.markdown -- notice_id is extracted
-                    # from it server-side, see 6_user_select_remove_tenders.py
-
-
-def run_remove_pipeline(req: RemoveTenderRequest, q: "queue.Queue") -> dict:
-    q.put({"type": "progress", "stage": "starting", "message": "Removing tender..."})
-    try:
-        result = run_stage(
-            q, "removing",
-            "Moving this tender out of your active tender list...",
-            remove_module.remove_tender,
-            markdown=req.markdown,
-            tenders_dir=TENDERS_DIR,
-            tenders_seen_dir=TENDERS_SEEN_DIR,
-        )
-    except (FileNotFoundError, ValueError) as e:
-        raise RuntimeError(f"Could not remove tender: {e}") from e
-    q.put({"type": "progress", "stage": "done", "message": "Tender removed."})
-    return result
-
-
-def remove_event_stream(req: RemoveTenderRequest):
-    q: "queue.Queue" = queue.Queue()
-    result: dict = {}
-
-    def worker():
-        try:
-            with PIPELINE_LOCK:
-                result["removal"] = run_remove_pipeline(req, q)
+            release = extract_release_json(md_text)
+            metadata = extract_metadata(release)
         except Exception as e:
-            result["error"] = str(e)
-        finally:
-            q.put(None)
+            metadata = {}
+            print(f"    WARNING: could not extract index metadata for {notice_id}.md: {e}")
 
-    threading.Thread(target=worker, daemon=True).start()
+        # Tolerance is a snapshot of the filter dials AT MATCH TIME, not a
+        # thing that gets refreshed on every run like title/value/etc. --
+        # see extract_tolerance()'s docstring and
+        # fetch_tenders_oeffentlichevergabe.py's render_markdown(). {} means
+        # "no tolerance block in this .md" (pre-dates the field); we still
+        # record that as {} rather than leaving the key entirely absent, so
+        # 8_change_filter_tolerance.py can tell "unknown" apart from "key
+        # never checked".
+        tolerance = extract_tolerance(md_text)
 
-    while True:
-        item = q.get()
-        if item is None:
-            break
-        yield format_sse(item)
+        if notice_id in tenders:
+            entry = tenders[notice_id]
+            entry["priority"] = entry.get("priority", 0) + 1
+            entry["last_seen_run"] = now
+            entry.update(metadata)
+            entry.setdefault("tolerance", tolerance)
+        else:
+            tenders[notice_id] = {
+                "priority": 1,
+                "first_seen_run": now,
+                "last_seen_run": now,
+                "selected_count": 0,
+                "last_selected_at": None,
+                "tolerance": tolerance,
+                **metadata,
+            }
 
-    if "error" in result:
-        yield format_sse({"type": "error", "message": result["error"]})
-    else:
-        yield format_sse({"type": "done", **result.get("removal", {})})
-
-
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
-
-@app.get("/health")
-def health():
-    return {
-        "status": "ok",
-        "companyDetailsPath": str(COMPANY_DETAILS_PATH.resolve()),
-        "companyDetailsExists": COMPANY_DETAILS_PATH.exists(),
-        "filtersPath": str(FILTERS_PATH.resolve()),
-        "tendersDir": str(TENDERS_DIR.resolve()),
-        "tendersSeenDir": str(TENDERS_SEEN_DIR.resolve()),
-        "pipeline": {
-            "targetCount": PIPELINE_TARGET_COUNT,
-            "maxDaysBack": PIPELINE_MAX_DAYS_BACK,
-            "selectCount": PIPELINE_SELECT_COUNT,
-        },
-    }
+    save_index(tenders_dir, data)
+    return data
 
 
-@app.post("/admin/save-company-profile")
-def save_company_profile_route(profile: CompanyProfile):
-    """Writes the submitted profile to company_details.json directly,
-    without running the rest of the pipeline -- for updating the company
-    profile ahead of a scheduled/batch workflow_tools run. Overwrites
-    whatever company profile was previously stored."""
-    record = save_company_profile(profile)
-    return {
-        "status": "saved",
-        "path": str(COMPANY_DETAILS_PATH.resolve()),
-        "record": record,
-    }
-
-
-@app.post("/tenders/match")
-def match_tenders_stream(profile: CompanyProfile):
-    """Runs the full live pipeline for this profile and streams progress
-    back as Server-Sent Events, ending with one {"type": "done", "matches":
-    [...]} event (or {"type": "error", ...} on failure). Submitting a
-    profile overwrites the currently stored company_details.json/
-    filters.yaml -- this backend only ever tracks one company."""
-    return StreamingResponse(
-        pipeline_event_stream(profile),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",  # disable nginx response buffering, if present
-        },
+def pick_top(tenders_dir, count: int) -> list:
+    """Up to `count` notice_ids, highest priority first, EXCLUDING anything
+    marked removed (see mark_removed()). Ties are broken toward whichever
+    has been selected least often, so a tender that's somehow tied at the
+    top forever doesn't monopolize every selection."""
+    data = load_index(tenders_dir)
+    candidates = [
+        (notice_id, entry) for notice_id, entry in data["tenders"].items()
+        if not entry.get("removed")
+    ]
+    ranked = sorted(
+        candidates,
+        key=lambda kv: (-kv[1].get("priority", 0), kv[1].get("selected_count", 0)),
     )
+    return [notice_id for notice_id, _entry in ranked[:count]]
 
 
-@app.post("/tenders/remove")
-def remove_tender_stream(req: RemoveTenderRequest):
-    """Dismisses one tender (by its full raw markdown, from a prior
-    /tenders/match "done" event's matches[i].tender.markdown) and streams
-    progress back as Server-Sent Events, ending with one {"type": "done",
-    "status": "removed" | "already_removed", "id": "..."} event (or
-    {"type": "error", ...} on failure -- e.g. unparseable markdown or an
-    unknown id). The notice_id is extracted from the markdown server-side,
-    not supplied by the caller -- see 6_user_select_remove_tenders.py."""
-    return StreamingResponse(
-        remove_event_stream(req),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
+def mark_selected(tenders_dir, notice_ids: list) -> None:
+    """Call after 5_select_tenders.py picks. Bumps selected_count, stamps
+    last_selected_at, and resets priority to 0 -- see module docstring."""
+    data = load_index(tenders_dir)
+    tenders = data["tenders"]
+    now = _now_iso()
+    for notice_id in notice_ids:
+        if notice_id in tenders:
+            entry = tenders[notice_id]
+            entry["selected_count"] = entry.get("selected_count", 0) + 1
+            entry["last_selected_at"] = now
+            entry["priority"] = 0
+    save_index(tenders_dir, data)
+
+
+def mark_removed(tenders_dir, notice_id: str) -> None:
+    """Call after 6_user_select_remove_tenders.py moves a tender's .md file
+    out to tenders_seen/. Marks the index entry removed (kept, not deleted
+    -- see module docstring) and floors its priority so pick_top() never
+    surfaces it again even as a fallback.
+
+    Raises KeyError if notice_id isn't in the index at all (the caller is
+    expected to have already confirmed the tender existed before moving
+    its file).
+    """
+    data = load_index(tenders_dir)
+    tenders = data["tenders"]
+    if notice_id not in tenders:
+        raise KeyError(f"'{notice_id}' not found in index.json for {tenders_dir}")
+    entry = tenders[notice_id]
+    entry["removed"] = True
+    entry["removed_at"] = _now_iso()
+    entry["priority"] = REMOVED_PRIORITY
+    save_index(tenders_dir, data)
