@@ -1,46 +1,11 @@
 {
-  "companies": [
-    {
-      "name": "Brenner & Sohn Tiefbau GmbH",
-      "description": "the regional civil contractor",
-      "Revenue": 31000000,
-      "Employees": 140,
-      "founded": 1962,
-      "contractNature": "the regional civil contractor",
-      "does": "Road construction, sewers and pipelines, earthworks, municipal civil engineering. Owns its own machinery.",
-      "placeOfPerformance": "Bavaria, mainly Schwaben and Oberbayern, up to ~150 km from Augsburg (crews return home nightly)",
-      "contractValueMin": 400000,
-      "contractValueMax": 4000000,
-      "exclusions": "No rail-side work (no DB qualification, no certified safety staff), no bridges, nothing outside Germany",
-      "specifications": "Financial limit: bank supports guarantees up to ~€1.5M total outstanding at any one time. Below €400k the overhead isn't worth it; above €5M they would need a partner. Free from March (two crews committed until then). Reference projects: a €2.9M state road rehabilitation, a district sewer renewal, several housing-estate site developments. In their words: 'We're reliable and we're local. We lose on price to the bigger players about half the time. We want the jobs where the client cares that we turn up.'"
-    },
-    {
-      "name": "Elektro Vogtland GmbH",
-      "description": "the small specialist",
-      "Revenue": 8000000,
-      "Employees": 45,
-      "founded": 1991,
-      "contractNature": "the small specialist",
-      "does": "Electrical installation for buildings — power, lighting, fire alarm systems, building automation. Usually works as a subcontractor to a general contractor.",
-      "placeOfPerformance": "Saxony, Thuringia, eastern Bavaria, up to ~200 km from Plauen",
-      "contractValueMin": 80000,
-      "contractValueMax": 900000,
-      "exclusions": "No high voltage work, no explosion-protected installations, cannot act as main contractor on a multi-trade job. In their words: 'We're good but we're small. The paperwork is why most of our work comes through general contractors. If a public job is straightforward, we'll bid it directly.'",
-      "specifications": "Financial limit: guarantees up to ~€300k. Reference projects: school refurbishments, a hospital ward block, office fit-outs, two care homes."
-    },
-    {
-      "name": "Hanseatische Bau AG",
-      "description": "the large general contractor",
-      "Revenue": 310000000,
-      "Employees": 620,
-      "founded": 1954,
-      "contractNature": "the large general contractor",
-      "does": "Building construction and turnkey projects — offices, schools, hospitals, housing, logistics. They coordinate; the trades are subcontracted.",
-      "placeOfPerformance": "Northern Germany",
-      "contractValueMin": 8000000,
-      "contractValueMax": 90000000,
-      "exclusions": "No civil engineering as lead contractor (no roads, sewers, or bridges); nothing in southern Germany in a decade. In their words: 'We're a coordination business. What hurts us is a tender demanding a high share of self-performed work — we're not set up for that.'",
-      "specifications": "Below €5M the overhead is disproportionate. Constraint is not money but bidding capacity — the estimating department can seriously pursue about three tenders a week. Reference projects: a university building, two school campuses, a hospital extension, large residential quarters."
-    }
-  ]
+  "does": "Railways",
+  "contractNature": "Mixed (Works & Services)",
+  "placeOfPerformance": "Hai Duong",
+  "contractValueMin": "0",
+  "contractValueMax": "283929",
+  "exclusions": "",
+  "specifications": "",
+  "revenue": 2898349.0,
+  "employees": 31
 }
