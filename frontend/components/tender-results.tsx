@@ -101,22 +101,20 @@ function TenderCard({
       onKeyDown={
         active
           ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault()
-                onViewDetails(tender.id)
-              }
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              onViewDetails(tender.id)
             }
+          }
           : undefined
       }
-      className={`flex h-full w-full flex-col rounded-xl border bg-card shadow-lg transition-colors ${
-        active ? "cursor-pointer hover:border-amber-400" : ""
-      } ${
-        isSelected
+      className={`flex h-full w-full flex-col rounded-xl border bg-card shadow-lg transition-colors ${active ? "cursor-pointer hover:border-amber-400" : ""
+        } ${isSelected
           ? "border-amber-500 ring-2 ring-amber-500/50"
           : active
             ? "border-amber-400/80"
             : "border-border"
-      }`}
+        }`}
     >
       <div className="flex items-start justify-between gap-3 border-b p-3">
         <div className="min-w-0 space-y-1">
