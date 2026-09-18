@@ -11,6 +11,14 @@ matching. filters.yaml is now a single flat block of filter fields -- there
 is only ever one company/profile per backend instance, so there's no
 company-key wrapper around it.
 
+Matching used to be a strict AND of CPV match + region match + value range
+(plus exclusion keywords). filters.yaml now has a `match_mode` field: "all"
+keeps that original strict-AND behavior; "any" (with `min_criteria_matched`)
+lets a tender through if only some of those three core criteria match --
+e.g. right region and value band but a CPV code just outside the list. See
+matches_profile()'s docstring for the full rules. exclude_keywords /
+role_hint_reject stay a hard reject either way.
+
 This walks backward day by day from yesterday until it has collected
 TARGET_COUNT *new* matching tenders (or hits MAX_DAYS_BACK), writing one
 markdown file per matching tender into:
@@ -136,6 +144,24 @@ OPTIONAL_FIELD_DEFAULTS = {
     "reject_reserved_participation": False,
     "contract_starts_after": None,
     "contract_starts_before": None,
+    # match_mode controls how the three "core" criteria (CPV, NUTS region,
+    # value range) combine in matches_profile() below:
+    #   "all" -> strict AND (original behavior): every core criterion that
+    #            has a non-empty/set filter must pass, or the tender is
+    #            rejected. This is the default so old filters.yaml files
+    #            behave exactly as before.
+    #   "any" -> soft match: a tender passes as long as at least
+    #            min_criteria_matched of the *considered* core criteria
+    #            (those with a non-empty/set filter) pass, even if the
+    #            others miss. This is what lets through tenders that are
+    #            only partially related to the company profile -- e.g. a
+    #            tender in the right region and value band but a CPV code
+    #            just outside the list.
+    # exclude_keywords / role_hint_reject are never softened by this --
+    # they represent explicit hard exclusions and stay a hard reject
+    # regardless of match_mode.
+    "match_mode": "all",
+    "min_criteria_matched": None,
     "notes": "",
     # The exact per-criterion tolerance dials filters.yaml was built at
     # (see 2_company_details_to_initial_filter.py's render_filters_body).
@@ -369,40 +395,64 @@ def get_release_text_blob(release):
 
 
 def matches_profile(release, profile):
-    """Hard filter: CPV prefix AND region prefix AND value in range AND
-    (optional) procurement method / bid-prep window / reserved-participation
-    / lot contract-start window, minus exclusion/role-hint keywords. Returns
-    (bool, reason_str).
+    """Filter a release against the three "core" criteria -- CPV prefix,
+    region prefix, value range -- plus exclusion/role-hint keywords and the
+    optional secondary checks. Returns (bool, reason_str).
+
+    exclude_keywords / role_hint_reject are ALWAYS a hard reject, regardless
+    of match_mode -- they represent explicit hard exclusions (things the
+    company said it cannot/will not do), not soft preferences.
+
+    The three core criteria combine according to profile["match_mode"]:
+
+      "all" (default, backward compatible): strict AND. Every core
+      criterion that is "considered" (i.e. has a non-empty/set filter --
+      cpv_prefixes/nuts_prefixes non-empty, value_min/value_max not both
+      None) must pass, exactly like the original hard-AND behavior. A
+      criterion with an empty/unset filter is skipped, same as before.
+
+      "any": soft match. A tender passes as long as at least
+      profile["min_criteria_matched"] of the *considered* core criteria
+      pass -- the others are allowed to miss. This is what lets through
+      tenders that are only partially related to the company profile (e.g.
+      right region and value band, but CPV just outside the list). If
+      min_criteria_matched isn't set, it defaults to 1 (any single
+      considered criterion matching is enough).
 
     cpv_prefixes / nuts_prefixes may be an empty list -- that means "no
     filtering on this criterion" (e.g. tolerance 1.0 in
-    2_company_details_to_initial_filter.py's ladder), not "match nothing".
-    Both checks below are skipped entirely when their list is empty.
+    2_company_details_to_initial_filter.py's ladder), so it's never
+    "considered" and never counted against the tender either way.
+
+    Missing/non-EUR value data is still a hard, mode-independent reject
+    ("no value found" / "non-EUR currency (...)") -- there's no number to
+    score the value criterion against, so this is a data-quality issue, not
+    a strictness dial.
 
     The five optional checks (procurement_methods_allowed, min_bid_prep_days,
     reject_reserved_participation, contract_starts_after/_before) are
-    LENIENT ON MISSING DATA: if the profile sets one of them but the
-    corresponding OCDS field isn't present on this particular release, that
-    check is skipped (does not reject) rather than treated as a fail. This
-    matches the reality that these fields are sparsely populated across
-    notices (see sample_release.md) - a hard-reject-on-missing policy here
-    would silently zero out matches on any day where the field happens to be
-    absent. This is a different policy than value_min/value_max, which
-    predate this change and hard-reject on missing value on purpose.
+    unaffected by match_mode -- they stay hard filters, but LENIENT ON
+    MISSING DATA: if the profile sets one of them but the corresponding
+    OCDS field isn't present on this particular release, that check is
+    skipped (does not reject) rather than treated as a fail. This matches
+    the reality that these fields are sparsely populated across notices
+    (see sample_release.md) - a hard-reject-on-missing policy here would
+    silently zero out matches on any day where the field happens to be
+    absent.
 
     DIAGNOSTIC NOTE (see filters.yaml header for the full write-up):
     every rejection path below returns a distinct, greppable reason string
     ("no CPV match", "no region match (found: ...)", "value X below min Y",
-    "excluded by keyword '...'", "excluded by role-hint keyword '...'",
-    "no value found", "non-EUR currency (...)", "procurement method ...",
-    "bid prep window ...", "reserved participation present ...", "no lot
-    contractPeriod.startDate within ..."). Right now that reason is only
-    surfaced via the per-match print in run(); it is NOT currently tallied
-    anywhere. To diagnose which filter is actually starving matches,
-    collect these reasons into a Counter (see the DIAGNOSTIC HOOK in run())
-    instead of just printing the accepted ones -- the rejection reasons are
-    more informative than the matches when the match count is stuck near
-    zero.
+    "only N/M core criteria matched (...)", "excluded by keyword '...'",
+    "excluded by role-hint keyword '...'", "no value found", "non-EUR
+    currency (...)", "procurement method ...", "bid prep window ...",
+    "reserved participation present ...", "no lot contractPeriod.startDate
+    within ..."). A successful "any"-mode match also gets a descriptive
+    reason ("partial match (2/3 core criteria: cpv, value; missed: nuts)")
+    so render_markdown() can show a human why a soft match was let through.
+    These reasons are tallied into a Counter and printed in run()'s summary
+    to diagnose which filter is actually starving (or over-loosening)
+    matches.
     """
 
     text_blob = get_release_text_blob(release)
@@ -415,31 +465,66 @@ def matches_profile(release, profile):
         if kw.lower() in text_blob:
             return False, f"excluded by role-hint keyword '{kw}'"
 
-    cpvs = get_release_cpvs(release)
-    cpv_prefixes = profile["cpv_prefixes"]
-    # Empty cpv_prefixes means "no filtering on this criterion" (tolerance
-    # 1.0 in the ladder) -- do not let it reject everything below.
-    if cpv_prefixes and not any(cpv.startswith(p) for cpv in cpvs for p in cpv_prefixes):
-        return False, "no CPV match"
-
-    regions = get_release_regions(release)
-    nuts_prefixes = profile["nuts_prefixes"]
-    # Same as cpv_prefixes above: empty means unfiltered, not "match nothing".
-    if nuts_prefixes and not any(r.startswith(p) for r in regions for p in nuts_prefixes):
-        return False, f"no region match (found: {regions or 'none'})"
-
+    # --- value lookup happens first: missing/non-EUR value data is always
+    # a hard reject, independent of match_mode (see docstring). ------------
     amount, currency = get_release_value(release)
     if amount is None:
         return False, "no value found"
     if currency and currency != "EUR":
         return False, f"non-EUR currency ({currency})"
 
+    # --- the three core, softenable criteria -------------------------------
+    cpvs = get_release_cpvs(release)
+    cpv_prefixes = profile["cpv_prefixes"]
+    cpv_considered = bool(cpv_prefixes)
+    cpv_ok = cpv_considered and any(cpv.startswith(p) for cpv in cpvs for p in cpv_prefixes)
+
+    regions = get_release_regions(release)
+    nuts_prefixes = profile["nuts_prefixes"]
+    nuts_considered = bool(nuts_prefixes)
+    nuts_ok = nuts_considered and any(r.startswith(p) for r in regions for p in nuts_prefixes)
+
     vmin = profile.get("value_min")
     vmax = profile.get("value_max")
-    if vmin is not None and amount < vmin:
-        return False, f"value {amount:,.0f} below min {vmin:,.0f}"
-    if vmax is not None and amount > vmax:
-        return False, f"value {amount:,.0f} above max {vmax:,.0f}"
+    value_considered = vmin is not None or vmax is not None
+    value_ok = value_considered and not (
+        (vmin is not None and amount < vmin) or (vmax is not None and amount > vmax)
+    )
+
+    core = [
+        ("cpv", cpv_considered, cpv_ok, "no CPV match"),
+        ("nuts", nuts_considered, nuts_ok, f"no region match (found: {regions or 'none'})"),
+        ("value", value_considered, value_ok,
+         (f"value {amount:,.0f} below min {vmin:,.0f}" if vmin is not None and amount < vmin
+          else f"value {amount:,.0f} above max {vmax:,.0f}" if vmax is not None and amount > vmax
+          else "value out of range")),
+    ]
+    considered = [c for c in core if c[1]]
+    match_mode = profile.get("match_mode") or "all"
+
+    if match_mode == "any" and considered:
+        min_needed = profile.get("min_criteria_matched") or 1
+        matched = [c for c in considered if c[2]]
+        if len(matched) < min_needed:
+            missed = ", ".join(c[0] for c in considered if not c[2])
+            return False, (
+                f"only {len(matched)}/{len(considered)} core criteria matched "
+                f"(need {min_needed}) -- missed: {missed or 'none'}"
+            )
+        if len(matched) < len(considered):
+            hit = ", ".join(c[0] for c in matched)
+            missed = ", ".join(c[0] for c in considered if not c[2])
+            core_reason = f"partial match ({len(matched)}/{len(considered)} core criteria: {hit}; missed: {missed})"
+        else:
+            core_reason = "match"
+    else:
+        # "all" mode (default/backward-compatible): every considered
+        # criterion must pass, checked in the original order so the
+        # rejection reason strings are unchanged from before.
+        for name, was_considered, ok, reason in core:
+            if was_considered and not ok:
+                return False, reason
+        core_reason = "match"
 
     allowed_methods = profile.get("procurement_methods_allowed")
     if allowed_methods:
@@ -481,7 +566,7 @@ def matches_profile(release, profile):
                                 f"[{starts_after or '-inf'}, {starts_before or '+inf'}]")
         # lot_starts empty (no lot has contractPeriod.startDate) -> lenient, don't reject
 
-    return True, "match"
+    return True, core_reason
 
 
 def get_path(obj, dot_path):
