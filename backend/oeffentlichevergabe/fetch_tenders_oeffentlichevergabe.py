@@ -1,5 +1,5 @@
 """
-webscrape/fetch_tenders.py
+backend/oeffentlichevergabe/fetch_tenders_oeffentlichevergabe.py
 
 Fetch German public tenders from oeffentlichevergabe.de and sort them into
 per-company markdown files based on hard filters (CPV prefix, NUTS region,
@@ -22,10 +22,10 @@ incremental top-up — so re-running after loosening a filter won't leave
 stale matches from a stricter previous run mixed in.
 
 Usage:
-    python fetch_tenders.py
-    python fetch_tenders.py --target 40 --max-days 90
-    python fetch_tenders.py --companies brenner_sohn_tiefbau
-    python fetch_tenders.py --filters my_filters.yaml
+    python fetch_tenders_oeffentlichevergabe.py
+    python fetch_tenders_oeffentlichevergabe.py --target 40 --max-days 90
+    python fetch_tenders_oeffentlichevergabe.py --companies brenner_sohn_tiefbau
+    python fetch_tenders_oeffentlichevergabe.py --filters my_filters.yaml
 
 filters.yaml is resolved relative to this script's own location, so it works
 regardless of which directory you run the command from.

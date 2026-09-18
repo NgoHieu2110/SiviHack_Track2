@@ -1,7 +1,7 @@
 """
-webscrape/inspect_release.py
+backend/oeffentlichevergabe/inspect_release.py
 
-DIAGNOSTIC TOOL - not part of the normal fetch_tenders.py pipeline.
+DIAGNOSTIC TOOL - not part of the normal fetch_tenders_oeffentlichevergabe.py pipeline.
 
 Fetches ONE day of notices from the Bekanntmachungsservice OCDS export,
 grabs the first release found (or a specific notice ID if given), and
@@ -9,7 +9,7 @@ writes out a markdown file containing:
 
   1. The full raw OCDS release JSON, pretty-printed, so you can see every
      field actually present on a real notice (not just the ~4 fields
-     fetch_tenders.py currently extracts).
+     fetch_tenders_oeffentlichevergabe.py currently extracts).
   2. A "field inventory" checklist that specifically flags whether the
      richer OCDS/eForms fields discussed as candidates for filters.yaml
      (lots, otherRequirements, additionalClassifications, procurementMethod,
@@ -18,7 +18,7 @@ writes out a markdown file containing:
      is present in the schema but rarely filled in by this data source.
 
 This intentionally does NOT touch filters.yaml, company_profiles.py, or
-fetch_tenders.py. It's read-only reconnaissance to decide what's worth
+fetch_tenders_oeffentlichevergabe.py. It's read-only reconnaissance to decide what's worth
 wiring into the real matching logic afterward.
 
 Usage:
