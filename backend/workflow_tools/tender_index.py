@@ -39,8 +39,18 @@ PRIORITY RULES (see conversation with the user for the source of these):
     behavior wasn't explicitly specified, it's this module's assumption
     about how "select from the highest priority" should behave end-to-end.
     Flip it out easily if that's not what's wanted.
-  - An index entry is dropped if its .md file is no longer present on disk
-    (e.g. manually deleted).
+  - 6_user_select_remove_tenders.py marks a tender "removed" when the user
+    dismisses it (see mark_removed()): its priority drops to
+    REMOVED_PRIORITY (below anything a normal run would ever produce) and
+    it's permanently excluded from pick_top(), so it can never be
+    reselected. Unlike the "file no longer on disk" case below, a removed
+    tender's index entry is deliberately KEPT (not deleted) as a seen/
+    rejected history, even though its .md file has moved out to
+    tenders_seen/<company_key>/ and is therefore no longer "on disk" from
+    this module's point of view.
+  - Any other index entry is dropped if its .md file is no longer present
+    on disk (e.g. manually deleted, moved by something other than the
+    removal flow above).
 
 The cached metadata fields (title/authority/value/currency/deadline) are
 NOT a replacement for the .md file -- they exist purely so something can
@@ -55,6 +65,13 @@ from pathlib import Path
 
 JSON_BLOCK_RE = re.compile(r"## Full raw release JSON\s*```json\s*(.*?)```", re.DOTALL)
 INDEX_FILENAME = "index.json"
+
+# Sentinel priority assigned to a removed/dismissed tender -- deliberately
+# lower than anything a normal run could produce (new tenders start at 1,
+# and mark_selected() floors out at 0), so a removed tender can never
+# accidentally out-rank a live one even if pick_top()'s explicit
+# `removed` check were ever bypassed.
+REMOVED_PRIORITY = -1
 
 
 def _now_iso() -> str:
@@ -140,8 +157,13 @@ def sync_index_with_folder(company_dir) -> dict:
 
     on_disk = {p.stem for p in company_dir.glob("*.md")}
 
+    # Drop stale entries (file was removed/moved outside the removal flow
+    # below) -- but NEVER drop a `removed` entry just because its .md file
+    # is (by design) no longer in this folder; that's what distinguishes a
+    # deliberately-removed tender from an orphaned index row.
     for stale_id in list(set(tenders) - on_disk):
-        del tenders[stale_id]
+        if not tenders[stale_id].get("removed"):
+            del tenders[stale_id]
 
     now = _now_iso()
     for notice_id in sorted(on_disk):
@@ -173,12 +195,17 @@ def sync_index_with_folder(company_dir) -> dict:
 
 
 def pick_top(company_dir, count: int) -> list:
-    """Up to `count` notice_ids, highest priority first. Ties are broken
-    toward whichever has been selected least often, so a tender that's
-    somehow tied at the top forever doesn't monopolize every selection."""
+    """Up to `count` notice_ids, highest priority first, EXCLUDING anything
+    marked removed (see mark_removed()). Ties are broken toward whichever
+    has been selected least often, so a tender that's somehow tied at the
+    top forever doesn't monopolize every selection."""
     data = load_index(company_dir)
+    candidates = [
+        (notice_id, entry) for notice_id, entry in data["tenders"].items()
+        if not entry.get("removed")
+    ]
     ranked = sorted(
-        data["tenders"].items(),
+        candidates,
         key=lambda kv: (-kv[1].get("priority", 0), kv[1].get("selected_count", 0)),
     )
     return [notice_id for notice_id, _entry in ranked[:count]]
@@ -196,4 +223,25 @@ def mark_selected(company_dir, notice_ids: list) -> None:
             entry["selected_count"] = entry.get("selected_count", 0) + 1
             entry["last_selected_at"] = now
             entry["priority"] = 0
+    save_index(company_dir, data)
+
+
+def mark_removed(company_dir, notice_id: str) -> None:
+    """Call after 6_user_select_remove_tenders.py moves a tender's .md file
+    out to tenders_seen/<company_key>/. Marks the index entry removed
+    (kept, not deleted -- see module docstring) and floors its priority so
+    pick_top() never surfaces it again even as a fallback.
+
+    Raises KeyError if notice_id isn't in the index at all (the caller is
+    expected to have already confirmed the tender existed before moving
+    its file).
+    """
+    data = load_index(company_dir)
+    tenders = data["tenders"]
+    if notice_id not in tenders:
+        raise KeyError(f"'{notice_id}' not found in index.json for {company_dir}")
+    entry = tenders[notice_id]
+    entry["removed"] = True
+    entry["removed_at"] = _now_iso()
+    entry["priority"] = REMOVED_PRIORITY
     save_index(company_dir, data)

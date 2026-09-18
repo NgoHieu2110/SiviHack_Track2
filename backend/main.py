@@ -79,6 +79,7 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import StreamingResponse  # noqa: E402
 
 from models import CompanyProfile  # noqa: E402
+from pydantic import BaseModel  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Paths. Defaults assume the layout documented in 3_run_filter_for_tenders.py:
@@ -106,10 +107,12 @@ FETCH_MODULE_PATH = Path(
 )
 COMPANY_DETAILS_PATH = Path(os.environ.get("COMPANY_DETAILS_PATH", WORKFLOW_TOOLS_DIR / "company_details.json"))
 TENDERS_DIR = Path(os.environ.get("TENDERS_DIR", BASE_DIR / "tenders"))
+TENDERS_SEEN_DIR = Path(os.environ.get("TENDERS_SEEN_DIR", BASE_DIR / "tenders_seen"))
 
 FILTER_SCRIPT_PATH = Path(os.environ.get("FILTER_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "2_company_details_to_initial_filter.py"))
 FETCH_FILTER_RUNNER_PATH = Path(os.environ.get("FETCH_FILTER_RUNNER_PATH", WORKFLOW_TOOLS_DIR / "3_run_filter_for_tenders.py"))
 SELECT_SCRIPT_PATH = Path(os.environ.get("SELECT_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "5_select_tenders.py"))
+REMOVE_SCRIPT_PATH = Path(os.environ.get("REMOVE_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "6_user_select_remove_tenders.py"))
 
 ALLOWED_ORIGINS = [
     origin.strip()
@@ -167,6 +170,7 @@ def load_module(name: str, path: Path):
 filter_module = load_module("details_to_filter", FILTER_SCRIPT_PATH)
 run_filter_module = load_module("run_filter_for_tenders", FETCH_FILTER_RUNNER_PATH)
 select_module = load_module("select_tenders", SELECT_SCRIPT_PATH)
+remove_module = load_module("user_select_remove_tenders", REMOVE_SCRIPT_PATH)
 
 
 def slugify(name: str) -> str:
@@ -289,7 +293,7 @@ def build_match(tender_dict: dict, profile: CompanyProfile) -> dict:
 # The pipeline itself
 # ---------------------------------------------------------------------------
 
-def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> list[dict]:
+def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> tuple[str, list[dict]]:
     q.put({"type": "progress", "stage": "starting", "message": "Starting your tender search..."})
 
     company_name = (
@@ -350,7 +354,10 @@ def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> list[dict]:
         filters_path.unlink(missing_ok=True)
 
     q.put({"type": "progress", "stage": "done", "message": f"Found {len(selected)} tender(s)."})
-    return [build_match(t, profile) for t in selected]
+    # company_key is returned (and surfaced in the "done" SSE event below) so
+    # the frontend can pass it back into /tenders/remove later to dismiss one
+    # of these tenders -- see 6_user_select_remove_tenders.py.
+    return company_key, [build_match(t, profile) for t in selected]
 
 
 def pipeline_event_stream(profile: CompanyProfile):
@@ -360,7 +367,7 @@ def pipeline_event_stream(profile: CompanyProfile):
     def worker():
         try:
             with PIPELINE_LOCK:
-                result["matches"] = run_pipeline(profile, q)
+                result["company_key"], result["matches"] = run_pipeline(profile, q)
         except Exception as e:  # surfaced to the client as an error event, not a 500
             result["error"] = str(e)
         finally:
@@ -377,7 +384,70 @@ def pipeline_event_stream(profile: CompanyProfile):
     if "error" in result:
         yield format_sse({"type": "error", "message": result["error"]})
     else:
-        yield format_sse({"type": "done", "matches": result.get("matches", [])})
+        yield format_sse({
+            "type": "done",
+            "companyKey": result.get("company_key"),
+            "matches": result.get("matches", []),
+        })
+
+
+# ---------------------------------------------------------------------------
+# Removing a tender the user dismissed. Much shorter than the match
+# pipeline (no external API calls) but follows the same
+# progress-over-SSE + single-lock pattern for consistency, and because
+# run_stage()'s stdout capture is process-global (see PIPELINE_LOCK's own
+# comment) -- a removal running concurrently with a match pipeline would
+# scramble both their progress streams otherwise.
+# ---------------------------------------------------------------------------
+
+class RemoveTenderRequest(BaseModel):
+    companyKey: str
+    noticeId: str
+
+
+def run_remove_pipeline(req: RemoveTenderRequest, q: "queue.Queue") -> dict:
+    q.put({"type": "progress", "stage": "starting", "message": f"Removing tender {req.noticeId}..."})
+    try:
+        result = run_stage(
+            q, "removing",
+            f"Moving {req.noticeId} out of your active tender list...",
+            remove_module.remove_tender,
+            company_key=req.companyKey,
+            notice_id=req.noticeId,
+            tenders_dir=TENDERS_DIR,
+            tenders_seen_dir=TENDERS_SEEN_DIR,
+        )
+    except FileNotFoundError as e:
+        raise RuntimeError(f"Could not remove tender {req.noticeId}: {e}") from e
+    q.put({"type": "progress", "stage": "done", "message": "Tender removed."})
+    return result
+
+
+def remove_event_stream(req: RemoveTenderRequest):
+    q: "queue.Queue" = queue.Queue()
+    result: dict = {}
+
+    def worker():
+        try:
+            with PIPELINE_LOCK:
+                result["removal"] = run_remove_pipeline(req, q)
+        except Exception as e:
+            result["error"] = str(e)
+        finally:
+            q.put(None)
+
+    threading.Thread(target=worker, daemon=True).start()
+
+    while True:
+        item = q.get()
+        if item is None:
+            break
+        yield format_sse(item)
+
+    if "error" in result:
+        yield format_sse({"type": "error", "message": result["error"]})
+    else:
+        yield format_sse({"type": "done", **result.get("removal", {})})
 
 
 # ---------------------------------------------------------------------------
@@ -391,6 +461,7 @@ def health():
         "companyDetailsPath": str(COMPANY_DETAILS_PATH.resolve()),
         "companyDetailsExists": COMPANY_DETAILS_PATH.exists(),
         "tendersDir": str(TENDERS_DIR.resolve()),
+        "tendersSeenDir": str(TENDERS_SEEN_DIR.resolve()),
         "pipeline": {
             "targetCount": PIPELINE_TARGET_COUNT,
             "maxDaysBack": PIPELINE_MAX_DAYS_BACK,
@@ -416,13 +487,33 @@ def save_company_profile_route(profile: CompanyProfile):
 @app.post("/tenders/match")
 def match_tenders_stream(profile: CompanyProfile):
     """Runs the full live pipeline for this profile and streams progress
-    back as Server-Sent Events, ending with one {"type": "done", "matches":
-    [...]} event (or {"type": "error", ...} on failure)."""
+    back as Server-Sent Events, ending with one {"type": "done", "companyKey":
+    "...", "matches": [...]} event (or {"type": "error", ...} on failure).
+    Keep the companyKey -- it's what /tenders/remove needs to dismiss one
+    of these tenders later."""
     return StreamingResponse(
         pipeline_event_stream(profile),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",  # disable nginx response buffering, if present
+        },
+    )
+
+
+@app.post("/tenders/remove")
+def remove_tender_stream(req: RemoveTenderRequest):
+    """Dismisses one tender (by companyKey + noticeId, from a prior
+    /tenders/match "done" event) and streams progress back as Server-Sent
+    Events, ending with one {"type": "done", "status": "removed" |
+    "already_removed", "companyKey": "...", "id": "..."} event (or
+    {"type": "error", ...} on failure -- e.g. an unknown companyKey/noticeId
+    pair)."""
+    return StreamingResponse(
+        remove_event_stream(req),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
         },
     )
