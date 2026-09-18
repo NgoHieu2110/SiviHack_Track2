@@ -11,7 +11,6 @@ import { toast } from "sonner"
 
 const EMPTY_PROFILE: CompanyProfile = {
   does: "",
-  contractNature: "",
   placeOfPerformance: "",
   contractValueMin: "",
   contractValueMax: "",
