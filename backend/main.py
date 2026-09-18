@@ -30,19 +30,23 @@ streams progress back to the browser as Server-Sent Events
        PIPELINE_MAX_DAYS_BACK is hit. This also updates
        backend/tenders/index.json (priority bookkeeping -- see
        tender_index.py).
-    4. workflow_tools/5_select_tenders.py: pick PIPELINE_SELECT_COUNT of the
-       highest-priority tenders from index.json and return each one's full
-       raw markdown.
+    4. workflow_tools/7_select_from_raw_tenders.py: ask Gemini to pick and
+       explain PIPELINE_SELECT_COUNT of the raw matched tenders in
+       backend/tenders/ for this company profile, returning each one's
+       full match record (including raw markdown) directly -- there is no
+       separate build_match() scoring step anymore, this stage returns the
+       finished match objects.
 
     There is no more standardization stage -- backend/standardized_tenders/
     and 4_standardize_tenders.py have been removed. backend/tenders/ is now
     the only tender store, and what's sent to the frontend is each selected
     tender's raw .md content rather than a parsed/standardized JSON record.
 
-PIPELINE_LOCK serializes /tenders/match and /tenders/remove calls (see its
-own comment below) -- since there's only one shared company_details.json /
-filters.yaml / tenders/ store, concurrent submissions would otherwise step
-on each other's state rather than just being slow.
+PIPELINE_LOCK serializes /tenders/match, /tenders/remove and /tenders/refine
+calls (see its own comment below) -- since there's only one shared
+company_details.json / filters.yaml / tenders/ store, concurrent
+submissions would otherwise step on each other's state rather than just
+being slow.
 
 Each SSE event is one line of JSON after "data: ":
     {"type": "progress", "stage": "...", "message": "..."}   (many)
@@ -56,8 +60,19 @@ it streams progress rather than returning a single blocking JSON response.
 Also exposes POST /admin/save-company-profile, which writes whatever
 CompanyProfile is POSTed to it into company_details.json directly, without
 running the rest of the pipeline -- useful for updating the company profile
-that a scheduled/batch run of workflow_tools 2-3-5 will pick up later,
+that a scheduled/batch run of workflow_tools 2-3-7 will pick up later,
 without immediately kicking off a live fetch.
+
+POST /tenders/refine handles the "kept 2 of 3, dismissed 1" case: it
+computes a new per-criterion filter tolerance from that choice (see
+workflow_tools/8_change_filter_tolerance.py), dismisses the removed tender,
+rewrites filters.yaml, re-runs the fetch, and returns a single replacement
+tender. NOTE: as of this merge, the replacement-picking step inside
+8_change_filter_tolerance.py still calls the older
+workflow_tools/5_select_tenders.py (priority-based) rather than
+7_select_from_raw_tenders.py (AI-based) -- see that script's docstring for
+why, and update it once 7_select_from_raw_tenders.py's signature is
+available.
 """
 
 from __future__ import annotations
@@ -119,6 +134,7 @@ FETCH_FILTER_RUNNER_PATH = Path(os.environ.get("FETCH_FILTER_RUNNER_PATH", WORKF
 SELECT_SCRIPT_PATH = Path(os.environ.get("SELECT_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "5_select_tenders.py"))
 REMOVE_SCRIPT_PATH = Path(os.environ.get("REMOVE_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "6_user_select_remove_tenders.py"))
 SELECT_FROM_RAW_SCRIPT_PATH = Path(os.environ.get("SELECT_FROM_RAW_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "7_select_from_raw_tenders.py"))
+CHANGE_TOLERANCE_SCRIPT_PATH = Path(os.environ.get("CHANGE_TOLERANCE_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "8_change_filter_tolerance.py"))
 
 ALLOWED_ORIGINS = [
     origin.strip()
@@ -180,6 +196,14 @@ run_filter_module = load_module("run_filter_for_tenders", FETCH_FILTER_RUNNER_PA
 select_module = load_module("select_tenders", SELECT_SCRIPT_PATH)
 remove_module = load_module("user_select_remove_tenders", REMOVE_SCRIPT_PATH)
 select_from_raw_module = load_module("select_from_raw", SELECT_FROM_RAW_SCRIPT_PATH)
+change_tolerance_module = load_module("change_filter_tolerance", CHANGE_TOLERANCE_SCRIPT_PATH)
+
+# How many new candidates the re-fetch inside /tenders/refine tries to
+# collect (and how far back it's allowed to walk) before
+# change_filter_tolerance() picks the single replacement tender. Kept
+# small/fast, same reasoning as PIPELINE_TARGET_COUNT/MAX_DAYS_BACK above.
+REFINE_TARGET_COUNT = int(os.environ.get("REFINE_TARGET_COUNT", "6"))
+REFINE_MAX_DAYS_BACK = int(os.environ.get("REFINE_MAX_DAYS_BACK", "60"))
 
 # ---------------------------------------------------------------------------
 # company_details.json persistence
@@ -420,6 +444,106 @@ def remove_event_stream(req: RemoveTenderRequest):
 
 
 # ---------------------------------------------------------------------------
+# Refining the match set: the user kept 2 of the 3 tenders they were shown
+# and dismissed the third. Nudges each filter criterion's tolerance toward
+# the kept tenders and away from the removed one (see
+# 8_change_filter_tolerance.py for the formula), re-runs the fetch at the
+# new tolerance, and returns exactly one replacement tender. Follows the
+# same progress-over-SSE + single-lock pattern as the other two pipelines,
+# for the same reasons (stdout capture is process-global; all three share
+# company_details.json / filters.yaml / tenders/).
+#
+# NOTE: the replacement tender is currently picked by
+# 8_change_filter_tolerance.py's own call to 5_select_tenders.py
+# (priority-based), not 7_select_from_raw_tenders.py (AI-based, used by the
+# main /tenders/match pipeline above). Once 7_select_from_raw_tenders.py's
+# signature is available this should probably be unified so /tenders/match
+# and /tenders/refine pick tenders the same way.
+# ---------------------------------------------------------------------------
+
+class RefineTendersRequest(BaseModel):
+    # Exactly 3 full raw tender markdown strings, as returned by a prior
+    # /tenders/match "done" event's matches[i].tender.markdown -- the same
+    # set the user was shown and chose 2 of 3 to keep.
+    tenders: list[str]
+    # 0-based index into `tenders` of the one the user dismissed. Matching
+    # by position (not by re-comparing markdown content) is deliberate --
+    # see 8_change_filter_tolerance.py's module docstring.
+    removed_index: int
+    # Optional override of the change constant k (see
+    # 8_change_filter_tolerance.py). Omitted -> that script's own default.
+    k: float | None = None
+
+
+def run_refine_pipeline(req: RefineTendersRequest, q: "queue.Queue") -> dict:
+    if len(req.tenders) != 3:
+        raise RuntimeError(f"expected exactly 3 tenders, got {len(req.tenders)}")
+    if req.removed_index not in (0, 1, 2):
+        raise RuntimeError(f"removed_index must be 0, 1, or 2, got {req.removed_index}")
+
+    q.put({"type": "progress", "stage": "starting", "message": "Refining your tender search..."})
+
+    kwargs = dict(
+        tenders=req.tenders,
+        removed_index=req.removed_index,
+        company_details_path=COMPANY_DETAILS_PATH,
+        filters_path=FILTERS_PATH,
+        fetch_module_path=FETCH_MODULE_PATH,
+        tenders_dir=TENDERS_DIR,
+        tenders_seen_dir=TENDERS_SEEN_DIR,
+        target=REFINE_TARGET_COUNT,
+        max_days=REFINE_MAX_DAYS_BACK,
+    )
+    if req.k is not None:
+        kwargs["k"] = req.k
+
+    try:
+        result = run_stage(
+            q, "refining",
+            "Comparing what you kept against what you dismissed and "
+            "re-tuning your filter...",
+            change_tolerance_module.change_filter_tolerance,
+            **kwargs,
+        )
+    except (FileNotFoundError, ValueError) as e:
+        raise RuntimeError(f"Could not refine tenders: {e}") from e
+
+    if result.get("replacement") is None:
+        q.put({"type": "progress", "stage": "done",
+               "message": "Filter updated, but no replacement tender matched within the search window."})
+    else:
+        q.put({"type": "progress", "stage": "done", "message": "Found a replacement tender."})
+    return result
+
+
+def refine_event_stream(req: RefineTendersRequest):
+    q: "queue.Queue" = queue.Queue()
+    result: dict = {}
+
+    def worker():
+        try:
+            with PIPELINE_LOCK:
+                result["refine"] = run_refine_pipeline(req, q)
+        except Exception as e:
+            result["error"] = str(e)
+        finally:
+            q.put(None)
+
+    threading.Thread(target=worker, daemon=True).start()
+
+    while True:
+        item = q.get()
+        if item is None:
+            break
+        yield format_sse(item)
+
+    if "error" in result:
+        yield format_sse({"type": "error", "message": result["error"]})
+    else:
+        yield format_sse({"type": "done", **result.get("refine", {})})
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -436,6 +560,10 @@ def health():
             "targetCount": PIPELINE_TARGET_COUNT,
             "maxDaysBack": PIPELINE_MAX_DAYS_BACK,
             "selectCount": PIPELINE_SELECT_COUNT,
+        },
+        "refine": {
+            "targetCount": REFINE_TARGET_COUNT,
+            "maxDaysBack": REFINE_MAX_DAYS_BACK,
         },
     }
 
@@ -479,9 +607,30 @@ def remove_tender_stream(req: RemoveTenderRequest):
     "status": "removed" | "already_removed", "id": "..."} event (or
     {"type": "error", ...} on failure -- e.g. unparseable markdown or an
     unknown id). The notice_id is extracted from the markdown server-side,
-    not supplied by the caller -- see 7_user_select_remove_tenders.py."""
+    not supplied by the caller -- see 6_user_select_remove_tenders.py."""
     return StreamingResponse(
         remove_event_stream(req),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.post("/tenders/refine")
+def refine_tenders_stream(req: RefineTendersRequest):
+    """The user kept 2 of the 3 tenders from a prior /tenders/match and
+    dismissed the third. Computes a new per-criterion filter tolerance from
+    that choice, dismisses the removed tender (same effect as
+    /tenders/remove), rewrites filters.yaml, re-runs the fetch, and returns
+    ONE replacement tender to slot in where the dismissed one was. Streams
+    progress as Server-Sent Events, ending with one {"type": "done",
+    "removed": {...}, "new_tolerance": {...}, "replacement": {...} | null}
+    event (or {"type": "error", ...} on failure). See
+    8_change_filter_tolerance.py for the formula and full flow."""
+    return StreamingResponse(
+        refine_event_stream(req),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
