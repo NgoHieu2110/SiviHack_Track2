@@ -8,15 +8,15 @@ with the highest priority.
 There is no more "standardized" schema -- backend/standardized_tenders/ and
 4_standardize_tenders.py are gone. Each result here is the raw matched
 tender markdown as fetch_tenders_oeffentlichevergabe.py wrote it
-(full embedded OCDS JSON and all), plus its notice_id and the handful of
+(full embedded OCDS JSON and all), plus its ocid and the handful of
 cached display fields (title/authority/value/currency/deadline) that live
 in index.json:
 
     {
-      "id": "<notice_id>",
+      "id": "<ocid>",
       "title": ..., "authority": ..., "value": ..., "currency": ...,
       "deadline": ..., "priority": <priority at selection time>,
-      "markdown": "<full contents of tenders/<notice_id>.md>",
+      "markdown": "<full contents of tenders/<ocid>.md>",
     }
 
 Selecting a tender resets its priority back to 0 in index.json (see
@@ -92,14 +92,14 @@ def select_tenders(
     top_ids = tender_index.pick_top(tenders_dir, count)
 
     results = []
-    for notice_id in top_ids:
-        md_path = tenders_dir / f"{notice_id}.md"
+    for ocid in top_ids:
+        md_path = tenders_dir / f"{ocid}.md"
         if not md_path.exists():
-            print(f"  SKIP {notice_id}: indexed but .md file missing on disk")
+            print(f"  SKIP {ocid}: indexed but .md file missing on disk")
             continue
-        entry = index_data["tenders"].get(notice_id, {})
+        entry = index_data["tenders"].get(ocid, {})
         results.append({
-            "id": notice_id,
+            "id": ocid,
             "title": entry.get("title"),
             "authority": entry.get("authority"),
             "value": entry.get("value"),

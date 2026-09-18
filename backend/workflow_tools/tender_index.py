@@ -3,7 +3,7 @@ backend/workflow_tools/tender_index.py
 
 Shared helpers for reading/writing the index.json that lives at
 backend/tenders/index.json, alongside the raw tender markdown files
-(<notice_id>.md, written by fetch_tenders_oeffentlichevergabe.py).
+(<ocid>.md, written by fetch_tenders_oeffentlichevergabe.py).
 backend/tenders/ is the only tender store for the one company this backend
 is configured for, and the raw per-tender .md file is what gets sent to
 the frontend.
@@ -12,7 +12,7 @@ index.json shape:
 {
   "updated_at": "<iso timestamp>",
   "tenders": {
-    "<notice_id>": {
+    "<ocid>": {
       "priority": 3,
       "first_seen_run": "<iso timestamp>",
       "last_seen_run": "<iso timestamp>",
@@ -35,8 +35,16 @@ time (filters.yaml gets re-tuned between runs; see
 8_change_filter_tolerance.py). {} means the tender predates this field.
 
 PRIORITY RULES (see conversation with the user for the source of these):
-  - A tender's notice_id doubles as its id everywhere (it's already the
-    .md filename and release["id"]).
+  - A tender's ocid (OCDS Open Contracting ID) doubles as its id
+    everywhere: it's the .md filename, the .seen_ids.txt entry, and the
+    key into this index. This is deliberately release["ocid"], NOT
+    release["id"] -- release["id"] identifies one individual notice and
+    changes every time the same underlying tender is republished/amended,
+    while ocid identifies the contracting process and stays constant
+    across those republishes. Keying on release["id"] previously caused
+    the same tender to show up as a "new" entry (and duplicate .md file)
+    on every republish; this module itself doesn't care which string it's
+    handed, but every caller must pass ocid, not release["id"].
   - Every time 3_run_filter_for_tenders.py runs, every tender whose .md
     file is still on disk gets priority += 1. A tender seen for the first
     time this run starts at priority = 1 (not incremented an extra time in
@@ -168,10 +176,10 @@ def extract_metadata(release: dict) -> dict:
 
 
 def sync_index_with_folder(tenders_dir) -> dict:
-    """Call after a fetch run. Walks every <notice_id>.md currently in
+    """Call after a fetch run. Walks every <ocid>.md currently in
     tenders_dir and:
-      - adds any notice_id not yet indexed, at priority=1
-      - bumps priority by 1 for every notice_id already indexed
+      - adds any ocid not yet indexed, at priority=1
+      - bumps priority by 1 for every ocid already indexed
       - refreshes cached metadata + last_seen_run for all of them
       - drops index entries whose .md file is no longer present
     Saves and returns the updated index dict.
@@ -191,15 +199,15 @@ def sync_index_with_folder(tenders_dir) -> dict:
             del tenders[stale_id]
 
     now = _now_iso()
-    for notice_id in sorted(on_disk):
-        md_path = tenders_dir / f"{notice_id}.md"
+    for ocid in sorted(on_disk):
+        md_path = tenders_dir / f"{ocid}.md"
         md_text = md_path.read_text(encoding="utf-8")
         try:
             release = extract_release_json(md_text)
             metadata = extract_metadata(release)
         except Exception as e:
             metadata = {}
-            print(f"    WARNING: could not extract index metadata for {notice_id}.md: {e}")
+            print(f"    WARNING: could not extract index metadata for {ocid}.md: {e}")
 
         # Tolerance is a snapshot of the filter dials AT MATCH TIME, not a
         # thing that gets refreshed on every run like title/value/etc. --
@@ -211,14 +219,14 @@ def sync_index_with_folder(tenders_dir) -> dict:
         # never checked".
         tolerance = extract_tolerance(md_text)
 
-        if notice_id in tenders:
-            entry = tenders[notice_id]
+        if ocid in tenders:
+            entry = tenders[ocid]
             entry["priority"] = entry.get("priority", 0) + 1
             entry["last_seen_run"] = now
             entry.update(metadata)
             entry.setdefault("tolerance", tolerance)
         else:
-            tenders[notice_id] = {
+            tenders[ocid] = {
                 "priority": 1,
                 "first_seen_run": now,
                 "last_seen_run": now,
@@ -233,52 +241,52 @@ def sync_index_with_folder(tenders_dir) -> dict:
 
 
 def pick_top(tenders_dir, count: int) -> list:
-    """Up to `count` notice_ids, highest priority first, EXCLUDING anything
+    """Up to `count` ocids, highest priority first, EXCLUDING anything
     marked removed (see mark_removed()). Ties are broken toward whichever
     has been selected least often, so a tender that's somehow tied at the
     top forever doesn't monopolize every selection."""
     data = load_index(tenders_dir)
     candidates = [
-        (notice_id, entry) for notice_id, entry in data["tenders"].items()
+        (ocid, entry) for ocid, entry in data["tenders"].items()
         if not entry.get("removed")
     ]
     ranked = sorted(
         candidates,
         key=lambda kv: (-kv[1].get("priority", 0), kv[1].get("selected_count", 0)),
     )
-    return [notice_id for notice_id, _entry in ranked[:count]]
+    return [ocid for ocid, _entry in ranked[:count]]
 
 
-def mark_selected(tenders_dir, notice_ids: list) -> None:
+def mark_selected(tenders_dir, ocids: list) -> None:
     """Call after 5_select_tenders.py picks. Bumps selected_count, stamps
     last_selected_at, and resets priority to 0 -- see module docstring."""
     data = load_index(tenders_dir)
     tenders = data["tenders"]
     now = _now_iso()
-    for notice_id in notice_ids:
-        if notice_id in tenders:
-            entry = tenders[notice_id]
+    for ocid in ocids:
+        if ocid in tenders:
+            entry = tenders[ocid]
             entry["selected_count"] = entry.get("selected_count", 0) + 1
             entry["last_selected_at"] = now
             entry["priority"] = 0
     save_index(tenders_dir, data)
 
 
-def mark_removed(tenders_dir, notice_id: str) -> None:
+def mark_removed(tenders_dir, ocid: str) -> None:
     """Call after 6_user_select_remove_tenders.py moves a tender's .md file
     out to tenders_seen/. Marks the index entry removed (kept, not deleted
     -- see module docstring) and floors its priority so pick_top() never
     surfaces it again even as a fallback.
 
-    Raises KeyError if notice_id isn't in the index at all (the caller is
+    Raises KeyError if ocid isn't in the index at all (the caller is
     expected to have already confirmed the tender existed before moving
     its file).
     """
     data = load_index(tenders_dir)
     tenders = data["tenders"]
-    if notice_id not in tenders:
-        raise KeyError(f"'{notice_id}' not found in index.json for {tenders_dir}")
-    entry = tenders[notice_id]
+    if ocid not in tenders:
+        raise KeyError(f"'{ocid}' not found in index.json for {tenders_dir}")
+    entry = tenders[ocid]
     entry["removed"] = True
     entry["removed_at"] = _now_iso()
     entry["priority"] = REMOVED_PRIORITY

@@ -37,6 +37,7 @@ regardless of which directory you run the command from.
 import argparse
 import io
 import json
+import logging
 import re
 import sys
 import zipfile
@@ -51,9 +52,73 @@ API_URL = "https://oeffentlichevergabe.de/api/notice-exports"
 SCRIPT_DIR = Path(__file__).resolve().parent
 OUTPUT_ROOT = SCRIPT_DIR / "tenders"
 DEFAULT_FILTERS_PATH = SCRIPT_DIR / "filters.yaml"
+DEFAULT_LOG_DIR = SCRIPT_DIR.parent / "logs"
 
 DEFAULT_TARGET_COUNT = 7
 DEFAULT_MAX_DAYS_BACK = 60  # safety cap so a bad filter config can't loop forever
+
+LOGGER_NAME = "fetch_tenders_oeffentlichevergabe"
+
+
+def setup_logging(log_dir: Path):
+    """Wire up two log files per run, plus keep printing to the console
+    exactly as before:
+
+      - <timestamp>_debug.log / latest_debug.log: EVERYTHING, including
+        one line per REJECTED tender with its exact reason (CPV mismatch,
+        region mismatch, value out of range, which keyword excluded it,
+        etc.) -- this is the file to grep when match volume looks wrong,
+        since the accepted matches alone rarely explain why the rest were
+        rejected.
+      - <timestamp>_summary.log / latest_summary.log: just the run header,
+        each accepted match, and the final reject-reason breakdown -- a
+        short file that's readable at a glance without wading through a
+        per-tender debug trace.
+
+    The 'latest_*' files are overwritten every run so there's always a
+    fixed path to check without hunting for a timestamp; the timestamped
+    files are kept as a run-by-run history. Returns the configured logger
+    plus the four file paths (debug, summary, latest_debug, latest_summary)
+    so callers can print/report them.
+    """
+    log_dir = Path(log_dir)
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    debug_path = log_dir / f"{run_id}_debug.log"
+    summary_path = log_dir / f"{run_id}_summary.log"
+    latest_debug_path = log_dir / "latest_debug.log"
+    latest_summary_path = log_dir / "latest_summary.log"
+
+    fmt = logging.Formatter("%(asctime)s %(levelname)-8s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+
+    def summary_filter(record):
+        return getattr(record, "summary", False)
+
+    logger = logging.getLogger(LOGGER_NAME)
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+    logger.handlers.clear()  # in case setup_logging() is called more than once in one process
+
+    console = logging.StreamHandler(sys.stdout)
+    console.setLevel(logging.INFO)
+    console.setFormatter(fmt)
+    logger.addHandler(console)
+
+    for path, mode in ((debug_path, "a"), (latest_debug_path, "w")):
+        h = logging.FileHandler(path, mode=mode, encoding="utf-8")
+        h.setLevel(logging.DEBUG)
+        h.setFormatter(fmt)
+        logger.addHandler(h)
+
+    for path, mode in ((summary_path, "a"), (latest_summary_path, "w")):
+        h = logging.FileHandler(path, mode=mode, encoding="utf-8")
+        h.setLevel(logging.INFO)
+        h.setFormatter(fmt)
+        h.addFilter(summary_filter)
+        logger.addHandler(h)
+
+    return logger, debug_path, summary_path, latest_debug_path, latest_summary_path
 
 REQUIRED_FIELDS = ["display_name", "cpv_prefixes", "nuts_prefixes"]
 
@@ -100,7 +165,12 @@ def load_filters(filters_path: Path) -> dict:
         sys.exit(f"{filters_path} must contain a mapping of filter fields "
                   f"(see filters.yaml).")
 
-    missing = [f for f in REQUIRED_FIELDS if f not in data or data[f] in (None, [])]
+    # NOTE: an empty list ([]) for cpv_prefixes/nuts_prefixes is a valid,
+    # meaningful value -- it means "no filtering on this criterion" (e.g.
+    # tolerance 1.0 in 2_company_details_to_initial_filter.py's ladder).
+    # Only a genuinely absent key or an explicit null counts as "missing"
+    # here; matches_profile() is what actually treats [] as unfiltered.
+    missing = [f for f in REQUIRED_FIELDS if f not in data or data[f] is None]
     if missing:
         sys.exit(f"{filters_path} is missing required field(s): {', '.join(missing)}")
 
@@ -116,34 +186,35 @@ def slugify(name: str) -> str:
 
 def fetch_day_releases(pub_day: str):
     """Download one day's OCDS export and yield (release, source_filename)."""
-    print(f"  Fetching {pub_day}...", flush=True)
+    logger = logging.getLogger(LOGGER_NAME)
+    logger.info(f"  Fetching {pub_day}...")
     try:
         resp = requests.get(
             API_URL, params={"pubDay": pub_day, "format": "ocds.zip"}, timeout=60
         )
     except requests.exceptions.RequestException as e:
-        print(f"    Request failed: {e}")
+        logger.warning(f"    Request failed: {e}")
         return
 
     if resp.status_code == 400:
         # Out of valid range (before 2022-12-01, or today/future) - stop walking.
-        print(f"    400 Bad Request for {pub_day} (likely out of valid date range). Stopping.")
+        logger.info(f"    400 Bad Request for {pub_day} (likely out of valid date range). Stopping.")
         raise StopIteration
 
     try:
         resp.raise_for_status()
     except requests.exceptions.HTTPError as e:
-        print(f"    HTTP error: {e}")
+        logger.warning(f"    HTTP error: {e}")
         return
 
     try:
         archive = zipfile.ZipFile(io.BytesIO(resp.content))
     except zipfile.BadZipFile:
-        print(f"    Not a valid ZIP for {pub_day} (empty day or error page). Skipping.")
+        logger.info(f"    Not a valid ZIP for {pub_day} (empty day or error page). Skipping.")
         return
 
     json_files = [n for n in archive.namelist() if n.endswith(".json")]
-    print(f"    {len(json_files)} notice files.")
+    logger.info(f"    {len(json_files)} notice files.")
 
     for fname in json_files:
         try:
@@ -303,6 +374,11 @@ def matches_profile(release, profile):
     / lot contract-start window, minus exclusion/role-hint keywords. Returns
     (bool, reason_str).
 
+    cpv_prefixes / nuts_prefixes may be an empty list -- that means "no
+    filtering on this criterion" (e.g. tolerance 1.0 in
+    2_company_details_to_initial_filter.py's ladder), not "match nothing".
+    Both checks below are skipped entirely when their list is empty.
+
     The five optional checks (procurement_methods_allowed, min_bid_prep_days,
     reject_reserved_participation, contract_starts_after/_before) are
     LENIENT ON MISSING DATA: if the profile sets one of them but the
@@ -341,12 +417,15 @@ def matches_profile(release, profile):
 
     cpvs = get_release_cpvs(release)
     cpv_prefixes = profile["cpv_prefixes"]
-    if not any(cpv.startswith(p) for cpv in cpvs for p in cpv_prefixes):
+    # Empty cpv_prefixes means "no filtering on this criterion" (tolerance
+    # 1.0 in the ladder) -- do not let it reject everything below.
+    if cpv_prefixes and not any(cpv.startswith(p) for cpv in cpvs for p in cpv_prefixes):
         return False, "no CPV match"
 
     regions = get_release_regions(release)
     nuts_prefixes = profile["nuts_prefixes"]
-    if not any(r.startswith(p) for r in regions for p in nuts_prefixes):
+    # Same as cpv_prefixes above: empty means unfiltered, not "match nothing".
+    if nuts_prefixes and not any(r.startswith(p) for r in regions for p in nuts_prefixes):
         return False, f"no region match (found: {regions or 'none'})"
 
     amount, currency = get_release_value(release)
@@ -600,22 +679,25 @@ def save_seen_id(tenders_dir: Path, notice_id: str):
         f.write(notice_id + "\n")
 
 
-def run(target_count: int, max_days_back: int, filters_path: Path = DEFAULT_FILTERS_PATH):
-    # DIAGNOSTIC HOOK (currently informational only, not wired into control
-    # flow): reject reasons, keyed on the leading phrase of the reason
-    # string returned by matches_profile() (e.g. "no CPV match",
-    # "no region match", "value ... below min ..." collapses to "value").
-    # Once there's a real need to diagnose why the match count is stuck,
-    # tally reason.split(" (")[0].split("'")[0] into reject_reason_counts
-    # for every release (not just until target is hit), then print
-    # reject_reason_counts.most_common() in the summary block below. Left
-    # as a plain Counter stub so wiring it in later is a small, localized
-    # change rather than a rewrite.
+def run(target_count: int, max_days_back: int, filters_path: Path = DEFAULT_FILTERS_PATH,
+        log_dir: Path = None):
+    # Reject reasons, keyed on the leading phrase of the reason string
+    # returned by matches_profile() (e.g. "no CPV match", "no region
+    # match", "value ... below min ..." collapses to "value"). Tallied for
+    # EVERY rejected release (not just until target is hit) and printed in
+    # the summary block below, and also written out per-tender at DEBUG
+    # level to the verbose log -- see setup_logging().
     reject_reason_counts = Counter()
+
+    logger, debug_log_path, summary_log_path, latest_debug_path, latest_summary_path = \
+        setup_logging(Path(log_dir) if log_dir else DEFAULT_LOG_DIR)
 
     profile = load_filters(filters_path)
 
     OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Debug log:   {debug_log_path}  (also: {latest_debug_path})", extra={"summary": True})
+    logger.info(f"Summary log: {summary_log_path}  (also: {latest_summary_path})", extra={"summary": True})
 
     # Incremental run: existing .md files and .seen_ids.txt are kept (never
     # wiped), so previously matched tenders stay on disk and target_count
@@ -623,20 +705,23 @@ def run(target_count: int, max_days_back: int, filters_path: Path = DEFAULT_FILT
     seen = load_seen_ids(OUTPUT_ROOT)
     count = 0  # NEW matches found *this run*, not the folder total
 
-    print(f"{profile['display_name']}: {len(seen)} previously matched tender(s) on disk, "
-          f"collecting up to {target_count} new one(s) this run.")
+    logger.info(
+        f"{profile['display_name']}: {len(seen)} previously matched tender(s) on disk, "
+        f"collecting up to {target_count} new one(s) this run.",
+        extra={"summary": True},
+    )
 
     day = datetime.now() - timedelta(days=1)
     days_walked = 0
 
     while days_walked < max_days_back:
         if count >= target_count:
-            print("\nTarget count reached.")
+            logger.info("Target count reached.")
             break
 
         pub_day = day.strftime("%Y-%m-%d")
-        print(f"\n=== Day {days_walked + 1}: {pub_day} "
-              f"(still need: {target_count - count} more) ===")
+        logger.info(f"=== Day {days_walked + 1}: {pub_day} "
+                    f"(still need: {target_count - count} more) ===")
 
         try:
             releases = list(fetch_day_releases(pub_day))
@@ -651,12 +736,9 @@ def run(target_count: int, max_days_back: int, filters_path: Path = DEFAULT_FILT
                 continue
             ok, reason = matches_profile(release, profile)
             if not ok:
-                # Cheap tally for later diagnosis -- see the DIAGNOSTIC
-                # HOOK comment above. Not printed by default; inspect
-                # reject_reason_counts yourself (e.g. in a debugger or by
-                # adding a print in the summary block) when match volume
-                # looks off.
                 reject_reason_counts[reason.split(" (")[0].split("'")[0]] += 1
+                title = release.get("tender", {}).get("title", "")[:70]
+                logger.debug(f"  REJECT {notice_id} ({title!r}): {reason}")
                 continue
 
             md = render_markdown(release, profile, reason=reason)
@@ -665,17 +747,35 @@ def run(target_count: int, max_days_back: int, filters_path: Path = DEFAULT_FILT
             seen.add(notice_id)
             save_seen_id(OUTPUT_ROOT, notice_id)
             count += 1
-            print(f"  MATCH ({count}/{target_count}): "
-                  f"{release.get('tender', {}).get('title', '')[:70]}")
+            logger.info(
+                f"  MATCH ({count}/{target_count}): "
+                f"{release.get('tender', {}).get('title', '')[:70]}",
+                extra={"summary": True},
+            )
 
         day -= timedelta(days=1)
         days_walked += 1
 
-    print("\n=== Summary ===")
-    print(f"{profile['display_name']}: {count}/{target_count} -> {OUTPUT_ROOT}")
+    logger.info("=== Summary ===", extra={"summary": True})
+    logger.info(f"{profile['display_name']}: {count}/{target_count} -> {OUTPUT_ROOT}",
+                extra={"summary": True})
     if count < target_count:
-        print(f"  (Did not reach target within {days_walked} days walked back. "
-              f"Consider loosening filters in filters.yaml or raising --max-days.)")
+        logger.info(
+            f"  (Did not reach target within {days_walked} days walked back. "
+            f"Consider loosening filters in filters.yaml or raising --max-days.)",
+            extra={"summary": True},
+        )
+
+    total_rejects = sum(reject_reason_counts.values())
+    logger.info(f"Rejection breakdown ({total_rejects} tender(s) rejected this run):",
+                extra={"summary": True})
+    if reject_reason_counts:
+        for reason, n in reject_reason_counts.most_common():
+            pct = 100 * n / total_rejects if total_rejects else 0
+            logger.info(f"  {reason}: {n} ({pct:.0f}%)", extra={"summary": True})
+    else:
+        logger.info("  (no rejections recorded -- either nothing was fetched, or "
+                     "everything fetched matched)", extra={"summary": True})
 
 
 def main():
@@ -686,9 +786,11 @@ def main():
                          help="Safety cap on how many days to walk backward.")
     parser.add_argument("--filters", type=Path, default=DEFAULT_FILTERS_PATH,
                          help=f"Path to the YAML filter file (default: {DEFAULT_FILTERS_PATH}).")
+    parser.add_argument("--log-dir", type=Path, default=DEFAULT_LOG_DIR,
+                         help=f"Where to write debug/summary log files (default: {DEFAULT_LOG_DIR}).")
     args = parser.parse_args()
 
-    run(args.target, args.max_days, args.filters)
+    run(args.target, args.max_days, args.filters, log_dir=args.log_dir)
 
 
 if __name__ == "__main__":

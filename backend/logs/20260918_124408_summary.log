@@ -1,0 +1,15 @@
+2026-09-18 12:44:08 INFO     Debug log:   /Users/killercookie/Main file/SiviHack_Track2/backend/logs/20260918_124408_debug.log  (also: /Users/killercookie/Main file/SiviHack_Track2/backend/logs/latest_debug.log)
+2026-09-18 12:44:08 INFO     Summary log: /Users/killercookie/Main file/SiviHack_Track2/backend/logs/20260918_124408_summary.log  (also: /Users/killercookie/Main file/SiviHack_Track2/backend/logs/latest_summary.log)
+2026-09-18 12:44:08 INFO     company: 0 previously matched tender(s) on disk, collecting up to 6 new one(s) this run.
+2026-09-18 12:44:31 INFO       MATCH (1/6): Abbrucharbeiten und Bodensanierung Connemara-Halle und Büro / Kantine
+2026-09-18 12:44:38 INFO       MATCH (2/6): Abbrucharbeiten BA 2
+2026-09-18 12:45:17 INFO     === Summary ===
+2026-09-18 12:45:17 INFO     company: 2/6 -> tenders
+2026-09-18 12:45:17 INFO       (Did not reach target within 60 days walked back. Consider loosening filters in filters.yaml or raising --max-days.)
+2026-09-18 12:45:17 INFO     Rejection breakdown (46847 tender(s) rejected this run):
+2026-09-18 12:45:17 INFO       no CPV match: 44562 (95%)
+2026-09-18 12:45:17 INFO       excluded by role-hint keyword : 1836 (4%)
+2026-09-18 12:45:17 INFO       excluded by keyword : 303 (1%)
+2026-09-18 12:45:17 INFO       no region match: 122 (0%)
+2026-09-18 12:45:17 INFO       no value found: 23 (0%)
+2026-09-18 12:45:17 INFO       value 189,382 below min 200,000: 1 (0%)

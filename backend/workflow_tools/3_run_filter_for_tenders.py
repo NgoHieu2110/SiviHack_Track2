@@ -8,7 +8,7 @@ fetch_tenders_oeffentlichevergabe.py itself lives.
 
 After the fetch runs and before index.json is touched, this script also
 checks backend/tenders_seen/ and deletes any freshly-fetched .md file whose
-notice_id is already sitting there -- i.e. a tender the user already
+ocid is already sitting there -- i.e. a tender the user already
 dismissed via 6_user_select_remove_tenders.py. This is a safety net on top
 of fetch_tenders_oeffentlichevergabe.py's own .seen_ids.txt (which is
 append-only and should already prevent this on its own); see
@@ -141,6 +141,7 @@ def run_filter_for_tenders(
     tenders_seen_dir: Path = DEFAULT_TENDERS_SEEN_DIR,
     target: int = DEFAULT_TARGET_COUNT,
     max_days: int = DEFAULT_MAX_DAYS_BACK,
+    log_dir: Path = None,
 ):
     """Library entry point mirroring the CLI: run
     fetch_tenders_oeffentlichevergabe.py's own run() against filters.yaml,
@@ -177,7 +178,7 @@ def run_filter_for_tenders(
     output_dir.mkdir(parents=True, exist_ok=True)
     module.OUTPUT_ROOT = output_dir
 
-    result = module.run(target, max_days, filters_path)
+    result = module.run(target, max_days, filters_path, log_dir=log_dir)
 
     print("\nChecking for tenders already dismissed (present in tenders_seen/)...")
     drop_already_seen_tenders(output_dir, tenders_seen_dir)
@@ -206,6 +207,9 @@ def main():
                          help=f"Number of matching tenders to collect (default: {DEFAULT_TARGET_COUNT})")
     parser.add_argument("--max-days", type=int, default=DEFAULT_MAX_DAYS_BACK,
                          help=f"Safety cap on how many days to walk backward (default: {DEFAULT_MAX_DAYS_BACK})")
+    parser.add_argument("--log-dir", type=Path, default=None,
+                         help="Where to write debug/summary log files "
+                              "(default: backend/logs, next to backend/tenders)")
     args = parser.parse_args()
 
     try:
@@ -216,6 +220,7 @@ def main():
             tenders_seen_dir=args.tenders_seen_dir,
             target=args.target,
             max_days=args.max_days,
+            log_dir=args.log_dir,
         )
     except (FileNotFoundError, RuntimeError, ValueError) as e:
         sys.exit(f"ERROR: {e}")
