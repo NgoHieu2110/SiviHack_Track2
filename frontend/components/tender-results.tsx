@@ -27,6 +27,8 @@ type Props = {
   hasSearched: boolean
   selectedId: string | null
   onSelect: (id: string) => void
+  /** Live progress messages streamed from the backend while the search pipeline runs. */
+  progressMessages?: string[]
 }
 
 function scoreColor(score: number) {
@@ -35,16 +37,43 @@ function scoreColor(score: number) {
   return "text-muted-foreground"
 }
 
-function EmptyState({ loading }: { loading: boolean }) {
+const MAX_VISIBLE_PROGRESS_MESSAGES = 6
+
+function EmptyState({ loading, progressMessages = [] }: { loading: boolean; progressMessages?: string[] }) {
+  const visibleMessages = progressMessages.slice(-MAX_VISIBLE_PROGRESS_MESSAGES)
+
   return (
     <div className="flex h-full min-h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/30 p-10 text-center">
       {loading ? (
         <>
           <Loader2 className="mb-4 h-10 w-10 animate-spin text-amber-500" />
           <h3 className="text-base font-semibold">Analyzing your profile…</h3>
-          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Matching your company against available public tenders and scoring each one.
-          </p>
+          {visibleMessages.length > 0 ? (
+            <ul className="mt-3 w-full max-w-sm space-y-1.5 text-left">
+              {visibleMessages.map((message, i) => {
+                const isLatest = i === visibleMessages.length - 1
+                return (
+                  <li
+                    key={`${i}-${message}`}
+                    className={`flex items-start gap-2 text-sm ${
+                      isLatest ? "text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    <span
+                      className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
+                        isLatest ? "animate-pulse bg-amber-500" : "bg-muted-foreground/40"
+                      }`}
+                    />
+                    <span>{message}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+              Matching your company against available public tenders and scoring each one.
+            </p>
+          )}
         </>
       ) : (
         <>
@@ -53,7 +82,7 @@ function EmptyState({ loading }: { loading: boolean }) {
           </div>
           <h3 className="text-base font-semibold">Your top tenders will appear here</h3>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Complete your company profile on the left and run the match to see the 3 best tenders with an AI
+            Complete your company profile on the left and run the match to see the 3 best tenders with an
             explanation of why they fit.
           </p>
         </>
@@ -62,9 +91,9 @@ function EmptyState({ loading }: { loading: boolean }) {
   )
 }
 
-export function TenderResults({ matches, loading, hasSearched, selectedId, onSelect }: Props) {
+export function TenderResults({ matches, loading, hasSearched, selectedId, onSelect, progressMessages }: Props) {
   if (loading || !hasSearched) {
-    return <EmptyState loading={loading} />
+    return <EmptyState loading={loading} progressMessages={progressMessages} />
   }
 
   return (
@@ -96,10 +125,10 @@ export function TenderResults({ matches, loading, hasSearched, selectedId, onSel
                     </Badge>
                     <span className="text-xs text-muted-foreground">{tender.id}</span>
                   </div>
-                  <h3 className="text-base font-semibold leading-snug">{tender.title}</h3>
+                  <h3 className="text-base font-semibold leading-snug">{tender.title ?? "Untitled tender"}</h3>
                   <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Building2 className="h-3.5 w-3.5" />
-                    {tender.authority}
+                    {tender.authority ?? "Authority not stated"}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
@@ -114,26 +143,28 @@ export function TenderResults({ matches, loading, hasSearched, selectedId, onSel
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Wallet className="h-3.5 w-3.5" />
-                  <span className="text-foreground">{formatCurrency(tender.value, tender.currency)}</span>
+                  <span className="text-foreground">
+                    {tender.value != null ? formatCurrency(tender.value, tender.currency ?? "EUR") : "Not stated"}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <MapPin className="h-3.5 w-3.5" />
-                  <span className="text-foreground">{tender.location}</span>
+                  <span className="text-foreground">{tender.location ?? "Not stated"}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <CalendarClock className="h-3.5 w-3.5" />
-                  <span className="text-foreground">{tender.deadline}</span>
+                  <span className="text-foreground">{tender.deadline ?? "Not stated"}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Users className="h-3.5 w-3.5" />
-                  <span className="text-foreground">{tender.role}</span>
+                  <span className="text-foreground">{tender.role ?? "Not stated"}</span>
                 </div>
               </div>
 
               <div className="rounded-lg border border-amber-200/70 bg-amber-50/60 p-3 dark:border-amber-500/20 dark:bg-amber-500/5">
                 <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
                   <Sparkles className="h-3.5 w-3.5" />
-                  AI analysis
+                  Match analysis
                 </div>
                 <p className="text-sm text-foreground/90">{summary}</p>
               </div>

@@ -48,7 +48,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 OUTPUT_ROOT = SCRIPT_DIR / "tenders"
 DEFAULT_FILTERS_PATH = SCRIPT_DIR / "filters.yaml"
 
-DEFAULT_TARGET_COUNT = 15
+DEFAULT_TARGET_COUNT = 10
 DEFAULT_MAX_DAYS_BACK = 90  # safety cap so a bad filter config can't loop forever
 
 REQUIRED_FIELDS = ["display_name", "cpv_prefixes", "nuts_prefixes"]

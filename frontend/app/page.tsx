@@ -26,6 +26,7 @@ export default function Page() {
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [progressMessages, setProgressMessages] = useState<string[]>([])
 
   const handleSubmit = async () => {
     const filledFields = Object.values(profile).filter((v) => {
@@ -41,8 +42,11 @@ export default function Page() {
     setLoading(true)
     setHasSearched(true)
     setSelectedId(null)
+    setProgressMessages([])
     try {
-      const results = await matchTendersRequest(profile)
+      const results = await matchTendersRequest(profile, (event) => {
+        setProgressMessages((prev) => [...prev, event.message])
+      })
       setMatches(results)
       toast.success(`Found your ${results.length} best-matched tenders.`)
     } catch (error) {
@@ -60,6 +64,7 @@ export default function Page() {
     setMatches([])
     setHasSearched(false)
     setSelectedId(null)
+    setProgressMessages([])
   }
 
   return (
@@ -95,6 +100,7 @@ export default function Page() {
               hasSearched={hasSearched}
               selectedId={selectedId}
               onSelect={setSelectedId}
+              progressMessages={progressMessages}
             />
           </section>
         </div>
