@@ -2044,5 +2044,332 @@
     "value_max_tight": 98329844,
     "value_max_loose": 2000000000,
     "notes": "Building construction (Hochbau) contractor based in Munich, handling contracts from roughly EUR 4.9k up to EUR 98m, with core focus on Oberbayern/Bayern and willingness to travel to adjacent German states. Explicitly excludes any offshore or marine work."
+  },
+  "261a1e8a2c752857": {
+    "cpv_ladder": {
+      "0.0": [
+        {
+          "code": "45311",
+          "label": "Electrical wiring and fitting work"
+        },
+        {
+          "code": "45310000",
+          "label": "Electrical installation work"
+        },
+        {
+          "code": "45315",
+          "label": "Electrical installations of heating and other building electric equipment"
+        },
+        {
+          "code": "45317",
+          "label": "Other electrical installation work"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "4531",
+          "label": "Electrical installation work (all sub-groups)"
+        },
+        {
+          "code": "45312",
+          "label": "Alarm system and antenna installation work"
+        },
+        {
+          "code": "45314",
+          "label": "Installation of telecommunications equipment"
+        },
+        {
+          "code": "45316",
+          "label": "Installation of illumination and signalling systems"
+        },
+        {
+          "code": "31600000",
+          "label": "Electrical equipment and apparatus"
+        },
+        {
+          "code": "50711000",
+          "label": "Repair and maintenance of electrical building installations"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "453",
+          "label": "Building installation work"
+        },
+        {
+          "code": "316",
+          "label": "Electrical equipment and apparatus"
+        },
+        {
+          "code": "315",
+          "label": "Lighting equipment and electric lamps"
+        },
+        {
+          "code": "5071",
+          "label": "Repair/maintenance of electrical building installations"
+        },
+        {
+          "code": "31200000",
+          "label": "Electricity distribution and control apparatus"
+        },
+        {
+          "code": "32500000",
+          "label": "Telecommunications equipment and supplies"
+        },
+        {
+          "code": "45330000",
+          "label": "Plumbing and sanitary works"
+        },
+        {
+          "code": "45331000",
+          "label": "Heating, ventilation and air-conditioning installation"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "45",
+          "label": "Construction work"
+        },
+        {
+          "code": "31",
+          "label": "Electrical machinery, apparatus, equipment and consumables"
+        },
+        {
+          "code": "32",
+          "label": "Radio, television, communication and telecommunication equipment"
+        },
+        {
+          "code": "507",
+          "label": "Repair and maintenance services of building installations"
+        },
+        {
+          "code": "51110000",
+          "label": "Installation services of electrical equipment"
+        },
+        {
+          "code": "71314",
+          "label": "Energy and related services (electrical engineering consultancy)"
+        },
+        {
+          "code": "45454000",
+          "label": "Restructuring/renovation work"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "45",
+          "label": "Construction work"
+        },
+        {
+          "code": "31",
+          "label": "Electrical equipment"
+        },
+        {
+          "code": "32",
+          "label": "Communication equipment"
+        },
+        {
+          "code": "50",
+          "label": "Repair and maintenance services"
+        },
+        {
+          "code": "51",
+          "label": "Installation services"
+        },
+        {
+          "code": "71",
+          "label": "Architectural, engineering and technical services"
+        },
+        {
+          "code": "09",
+          "label": "Electricity, fuels and energy"
+        },
+        {
+          "code": "34",
+          "label": "Transport/e-mobility equipment"
+        }
+      ],
+      "1.0": []
+    },
+    "nuts_ladder": {
+      "0.0": [
+        {
+          "code": "DE712",
+          "label": "Frankfurt am Main, Kreisfreie Stadt"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "DE71",
+          "label": "Darmstadt (Regierungsbezirk, incl. Frankfurt/Rhein-Main)"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "DE7",
+          "label": "Hessen"
+        },
+        {
+          "code": "DE71",
+          "label": "Darmstadt / Rhein-Main"
+        },
+        {
+          "code": "DEB3",
+          "label": "Rheinhessen-Pfalz (Mainz/Worms area)"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "DE7",
+          "label": "Hessen"
+        },
+        {
+          "code": "DEB",
+          "label": "Rheinland-Pfalz"
+        },
+        {
+          "code": "DE1",
+          "label": "Baden-Wuerttemberg"
+        },
+        {
+          "code": "DE2",
+          "label": "Bayern (Unterfranken border area)"
+        },
+        {
+          "code": "DEA",
+          "label": "Nordrhein-Westfalen"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "DE7",
+          "label": "Hessen"
+        },
+        {
+          "code": "DEB",
+          "label": "Rheinland-Pfalz"
+        },
+        {
+          "code": "DE1",
+          "label": "Baden-Wuerttemberg"
+        },
+        {
+          "code": "DE2",
+          "label": "Bayern"
+        },
+        {
+          "code": "DEA",
+          "label": "Nordrhein-Westfalen"
+        },
+        {
+          "code": "DEC",
+          "label": "Saarland"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DEG",
+          "label": "Thueringen"
+        },
+        {
+          "code": "DEE",
+          "label": "Sachsen-Anhalt"
+        }
+      ],
+      "1.0": []
+    },
+    "exclude_keywords_ladder": {
+      "0.0": [
+        "Hochspannungsfreileitung",
+        "Umspannwerk",
+        "Bahnstromanlage",
+        "Oberleitung",
+        "Windpark",
+        "Kraftwerksbau",
+        "Rohbau",
+        "Tiefbau",
+        "Strassenbau",
+        "Bruecken",
+        "Generalunternehmer",
+        "Totalunternehmer",
+        "Rahmenvertrag ueber mehrere Jahre",
+        "Abbruch",
+        "Kampfmittelraeumung"
+      ],
+      "0.2": [
+        "Hochspannungsfreileitung",
+        "Umspannwerk",
+        "Bahnstromanlage",
+        "Oberleitung",
+        "Windpark",
+        "Kraftwerksbau",
+        "Rohbau",
+        "Tiefbau",
+        "Strassenbau",
+        "Generalunternehmer",
+        "Totalunternehmer",
+        "Abbruch"
+      ],
+      "0.4": [
+        "Hochspannungsfreileitung",
+        "Umspannwerk",
+        "Bahnstromanlage",
+        "Kraftwerksbau",
+        "Generalunternehmer",
+        "Totalunternehmer"
+      ],
+      "0.6": [
+        "Hochspannungsfreileitung",
+        "Umspannwerk",
+        "Generalunternehmer"
+      ],
+      "0.8": [
+        "Generalunternehmer"
+      ],
+      "1.0": []
+    },
+    "role_hint_ladder": {
+      "0.0": [
+        "Elektroinstallation",
+        "Elektroarbeiten",
+        "Elektrotechnik",
+        "Starkstromanlagen",
+        "Schwachstromanlagen",
+        "Beleuchtungsanlagen",
+        "Fachlos Elektro",
+        "Kleinauftrag",
+        "Wartung Elektroanlagen"
+      ],
+      "0.2": [
+        "Elektroinstallation",
+        "Elektroarbeiten",
+        "Elektrotechnik",
+        "Starkstromanlagen",
+        "Beleuchtungsanlagen",
+        "Fachlos Elektro",
+        "Wartung Elektroanlagen"
+      ],
+      "0.4": [
+        "Elektroinstallation",
+        "Elektroarbeiten",
+        "Elektrotechnik",
+        "Fachlos Elektro"
+      ],
+      "0.6": [
+        "Elektroinstallation",
+        "Elektrotechnik"
+      ],
+      "0.8": [
+        "Elektro"
+      ],
+      "1.0": []
+    },
+    "value_min_tight": 0,
+    "value_min_loose": 0,
+    "value_max_tight": 37788,
+    "value_max_loose": 1500000,
+    "notes": "Small electrical contractor based in Frankfurt am Main, focused on building electrical installation work (Fachlos Elektro, wiring, lighting, small maintenance jobs) with a stated ceiling of about EUR 37,800 per contract. Core region is Frankfurt/Rhein-Main and Hessen, with loosening steps reaching into neighbouring federal states and adjacent building-services/electrical-equipment CPV categories."
   }
 }

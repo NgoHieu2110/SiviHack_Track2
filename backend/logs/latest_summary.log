@@ -1,19 +1,17 @@
-2026-09-18 14:44:54 INFO     Debug log:   D:\University\PersonalProject\SiviHack_Track2\backend\logs\20260918_144454_debug.log  (also: D:\University\PersonalProject\SiviHack_Track2\backend\logs\latest_debug.log)
-2026-09-18 14:44:54 INFO     Summary log: D:\University\PersonalProject\SiviHack_Track2\backend\logs\20260918_144454_summary.log  (also: D:\University\PersonalProject\SiviHack_Track2\backend\logs\latest_summary.log)
-2026-09-18 14:44:54 INFO     company: 54 previously matched tender(s) on disk, collecting up to 6 new one(s) this run.
-2026-09-18 14:44:59 INFO       MATCH (1/6): Digitalisierung der Ausstattung im Bildungszentrum München
-IZBN 71104
-2026-09-18 14:44:59 INFO       MATCH (2/6): Langzeitanmietung eines Blitz-Anhängers für vier Jahre mit der 
-Option
-2026-09-18 14:44:59 INFO       MATCH (3/6):  Rahmenvereinbarungen Programmier- und Beratungsleistungen zur Anwendu
-2026-09-18 14:44:59 INFO       MATCH (4/6): Wärmedämmverbundsystem und Putzarbeiten
-2026-09-18 14:44:59 INFO       MATCH (5/6): Rahmenvertrag zu Herstellung (ohne Prepress) und Distribution der Druc
-2026-09-18 14:45:01 INFO       MATCH (6/6): Müllzwischenbunker Burgkirchen Müllkran
-2026-09-18 14:45:01 INFO     === Summary ===
-2026-09-18 14:45:01 INFO     company: 6/6 -> tenders
-2026-09-18 14:45:01 INFO     Rejection breakdown (4275 tender(s) rejected this run):
-2026-09-18 14:45:01 INFO       no value found: 3111 (73%)
-2026-09-18 14:45:01 INFO       excluded by role-hint keyword : 912 (21%)
-2026-09-18 14:45:01 INFO       only 1/3 core criteria matched: 214 (5%)
-2026-09-18 14:45:01 INFO       only 0/3 core criteria matched: 30 (1%)
-2026-09-18 14:45:01 INFO       excluded by keyword : 8 (0%)
+2026-09-18 15:07:21 INFO     Debug log:   D:\University\PersonalProject\SiviHack_Track2\backend\logs\20260918_150721_debug.log  (also: D:\University\PersonalProject\SiviHack_Track2\backend\logs\latest_debug.log)
+2026-09-18 15:07:21 INFO     Summary log: D:\University\PersonalProject\SiviHack_Track2\backend\logs\20260918_150721_summary.log  (also: D:\University\PersonalProject\SiviHack_Track2\backend\logs\latest_summary.log)
+2026-09-18 15:07:21 INFO     company: 21 previously matched tender(s) on disk, collecting up to 6 new one(s) this run.
+2026-09-18 15:07:28 INFO       MATCH (1/6): Teilneubau Heinrich-Grupe-Schule 37124 Rosdorf - Trockenbauarbeiten Wä
+2026-09-18 15:07:28 INFO       MATCH (2/6): Generalsanierung Schule im Taubertal - Vergabe Wärmeversorgungsanlage
+2026-09-18 15:07:28 INFO       MATCH (3/6): HPE Aruba Networking - Aufhebung
+2026-09-18 15:07:28 INFO       MATCH (4/6): Lieferung und Installation von GPU-basierten KI-/HPC-Infrastrukturelem
+2026-09-18 15:07:28 INFO       MATCH (5/6): Fassadenarbeiten
+2026-09-18 15:07:28 INFO       MATCH (6/6): Beschaffung eines All-in-One-Fluoreszenzmikroskops (KEYENCE BZ-X1000) 
+2026-09-18 15:07:28 INFO     === Summary ===
+2026-09-18 15:07:28 INFO     company: 6/6 -> tenders
+2026-09-18 15:07:28 INFO     Rejection breakdown (1734 tender(s) rejected this run):
+2026-09-18 15:07:28 INFO       no value found: 1520 (88%)
+2026-09-18 15:07:28 INFO       only 1/3 core criteria matched: 93 (5%)
+2026-09-18 15:07:28 INFO       excluded by role-hint keyword : 56 (3%)
+2026-09-18 15:07:28 INFO       only 0/3 core criteria matched: 49 (3%)
+2026-09-18 15:07:28 INFO       excluded by keyword : 16 (1%)

@@ -21,7 +21,15 @@ streams progress back to the browser as Server-Sent Events
     1. Overwrite company_details.json with the submitted profile (a single
        flat object -- see 1_company_md_to_company_details.py's schema for
        context). Submitting a new profile replaces whatever company was
-       there before.
+       there before. If the submitted profile actually differs from what
+       was saved (see save_company_profile()/_profile_changed()), the
+       previous company's entire tender pool is cleared first
+       (clear_tender_state(): tenders/*.md, .seen_ids.txt, index.json,
+       tenders_seen/*.md) -- otherwise step 4 below would keep selecting
+       from a mix of the old and new company's matched tenders, since it
+       reads every .md in tenders/ regardless of which profile fetched it.
+       Resubmitting the SAME profile does not clear anything; tenders/
+       just keeps accumulating incrementally as before.
     2. workflow_tools/2_company_details_to_initial_filter.py: ask Claude to
        turn that profile into filters.yaml (CPV/NUTS prefixes, value range,
        exclusions, role hints).
@@ -61,7 +69,11 @@ Also exposes POST /admin/save-company-profile, which writes whatever
 CompanyProfile is POSTed to it into company_details.json directly, without
 running the rest of the pipeline -- useful for updating the company profile
 that a scheduled/batch run of workflow_tools 2-3-7 will pick up later,
-without immediately kicking off a live fetch.
+without immediately kicking off a live fetch. It goes through the same
+save_company_profile() as /tenders/match, so it also clears the previous
+company's tender pool first if the profile actually changed (see above) --
+the batch run's incremental fetch should start clean, not add onto a
+different company's leftover matches.
 
 POST /tenders/refine handles the "kept 2 of 3, dismissed 1" case: it
 computes a new per-criterion filter tolerance from that choice (see
@@ -208,11 +220,79 @@ REFINE_MAX_DAYS_BACK = int(os.environ.get("REFINE_MAX_DAYS_BACK", "60"))
 # company_details.json persistence
 # ---------------------------------------------------------------------------
 
+def _profile_changed(new_profile: CompanyProfile) -> bool:
+    """True if `new_profile` differs from whatever is currently saved in
+    company_details.json (ignoring the "submittedAt" timestamp save_company_
+    profile() stamps on, which always differs), or if nothing was saved yet.
+    Used to decide whether the tender pool needs a clean-slate reset -- see
+    clear_tender_state()."""
+    if not COMPANY_DETAILS_PATH.exists():
+        return True
+    try:
+        existing = json.loads(COMPANY_DETAILS_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return True
+    existing = {k: v for k, v in existing.items() if k != "submittedAt"}
+    return existing != new_profile.model_dump()
+
+
+def clear_tender_state() -> int:
+    """Wipe every trace of the PREVIOUS company's tender pool. Called right
+    before a genuinely new/changed company profile is saved, so that
+    7_select_from_raw_tenders.py's AI-selection stage -- which reads every
+    .md sitting in TENDERS_DIR, regardless of which profile/filter it was
+    originally fetched under -- can't resurface a leftover match from a
+    company that's no longer the one being searched for. Without this,
+    tenders/ only ever grows (fetch_tenders_oeffentlichevergabe.py's fetch
+    stage is deliberately incremental/never-wipe across repeated runs FOR
+    THE SAME company; this is the "different company" case that stage was
+    never meant to handle on its own).
+
+    Removes:
+      - every tenders/*.md (the previous company's matched tenders)
+      - tenders/.seen_ids.txt (the incremental-fetch de-dup tracker)
+      - tenders/index.json (priority bookkeeping)
+      - every tenders_seen/*.md (previously dismissed tenders -- also
+        company-specific; no reason they should block re-fetching the same
+        notice for an unrelated new company)
+
+    Does NOT touch filters.yaml or company_details.json themselves -- the
+    pipeline stages that follow immediately overwrite both anyway. Returns
+    the number of files removed.
+    """
+    removed = 0
+    if TENDERS_DIR.exists():
+        paths = list(TENDERS_DIR.glob("*.md"))
+        for extra in (TENDERS_DIR / ".seen_ids.txt", TENDERS_DIR / "index.json"):
+            if extra.exists():
+                paths.append(extra)
+        for path in paths:
+            path.unlink()
+            removed += 1
+    if TENDERS_SEEN_DIR.exists():
+        for path in TENDERS_SEEN_DIR.glob("*.md"):
+            path.unlink()
+            removed += 1
+    print(f"Cleared {removed} file(s) from the previous company's tender pool.")
+    return removed
+
+
 def save_company_profile(profile: CompanyProfile) -> dict:
     """Writes the submitted CompanyProfile to company_details.json as a
     single flat object, overwriting whatever was there before -- there is
     only one company per backend instance, not a list. Returns the saved
-    record."""
+    record.
+
+    If the submitted profile actually differs from what was saved before
+    (per _profile_changed()), first clears the tender pool via
+    clear_tender_state() -- see that function's docstring for why. A
+    resubmission of the SAME profile (e.g. the user just re-clicks
+    without editing anything) does NOT clear anything; the normal
+    incremental fetch just adds on top, as before.
+    """
+    if _profile_changed(profile):
+        clear_tender_state()
+
     record = profile.model_dump()
     record["submittedAt"] = datetime.now(timezone.utc).isoformat()
 
@@ -584,7 +664,9 @@ def match_tenders_stream(profile: CompanyProfile):
     back as Server-Sent Events, ending with one {"type": "done", "matches":
     [...]} event (or {"type": "error", ...} on failure). Submitting a
     profile overwrites the currently stored company_details.json/
-    filters.yaml -- this backend only ever tracks one company."""
+    filters.yaml -- this backend only ever tracks one company. If the
+    profile actually changed from what was stored, the previous company's
+    tender pool is cleared first (see save_company_profile())."""
     return StreamingResponse(
         pipeline_event_stream(profile),
         media_type="text/event-stream",

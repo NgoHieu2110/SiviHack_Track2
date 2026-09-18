@@ -5,7 +5,7 @@
 # hand-edit afterward; re-running the generator script will overwrite it
 # completely, so save manual tweaks elsewhere if you want to keep them.
 #
-# Ladder cache key: 8f36541adb37d9f1  (see .filter_ladders_cache.json --
+# Ladder cache key: 261a1e8a2c752857  (see .filter_ladders_cache.json --
 # if this filters.yaml ever looks wrong for the company it was built
 # from, check whether this key collides with another company's entry)
 #
@@ -38,28 +38,26 @@ tolerance:
 
 # cpv_prefixes (tolerance=0.50, snapped to step 0.4)
 cpv_prefixes:
-  - "45200000"  # Works for complete or part construction and civil engineering
-  - "45300000"  # Building installation work
-  - "45400000"  # Building completion work
-  - "45450000"  # Other building completion work
-  - "45111000"  # Demolition, site preparation and clearance work
-  - "45262500"  # Masonry and bricklaying work
-  - "45320000"  # Insulation work
-  - "45421000"  # Joinery and carpentry installation
+  - "453"  # Building installation work
+  - "316"  # Electrical equipment and apparatus
+  - "315"  # Lighting equipment and electric lamps
+  - "5071"  # Repair/maintenance of electrical building installations
+  - "31200000"  # Electricity distribution and control apparatus
+  - "32500000"  # Telecommunications equipment and supplies
+  - "45330000"  # Plumbing and sanitary works
+  - "45331000"  # Heating, ventilation and air-conditioning installation
 
 # nuts_prefixes (tolerance=0.50, snapped to step 0.4)
 nuts_prefixes:
-  - "DE2"  # Bayern
-  - "DE23"  # Oberpfalz
-  - "DE24"  # Oberfranken
-  - "DE25"  # Mittelfranken
-  - "DE26"  # Unterfranken
+  - "DE7"  # Hessen
+  - "DE71"  # Darmstadt / Rhein-Main
+  - "DEB3"  # Rheinhessen-Pfalz (Mainz/Worms area)
 
 # value_min / value_max (tolerance=0.50, interpolated between
-# tight [4,893, 98,329,844] and
-# loose [0, 2,000,000,000])
-value_min: 2446
-value_max: 1049164922
+# tight [0, 37,788] and
+# loose [0, 1,500,000])
+value_min: 0
+value_max: 768894
 
 # match_mode (resolved from --match-mode=auto, avg core tolerance 0.50):
 #   "all" -> strict AND: a tender must satisfy every one of CPV/region/
@@ -77,18 +75,19 @@ min_criteria_matched: 2
 
 # exclude_keywords (tolerance=0.50, snapped to step 0.4)  # NOTE: tolerance > 0 here means real stated exclusions are being dropped.
 exclude_keywords:
-  - "offshore"
-  - "Offshore-Windpark"
-  - "Offshore-Plattform"
-  - "Hochsee"
-  - "Bohrinsel"
+  - "Hochspannungsfreileitung"
+  - "Umspannwerk"
+  - "Bahnstromanlage"
+  - "Kraftwerksbau"
+  - "Generalunternehmer"
+  - "Totalunternehmer"
 
 # role_hint_reject (tolerance=0.50, snapped to step 0.4)
 role_hint_reject:
-  - "Hochbau"
-  - "Neubau"
-  - "Rohbau"
-  - "Bauleistungen"
+  - "Elektroinstallation"
+  - "Elektroarbeiten"
+  - "Elektrotechnik"
+  - "Fachlos Elektro"
 
 # Newer optional fields (procurement_methods_allowed, min_bid_prep_days,
 # reject_reserved_participation, contract_starts_after/_before) are left
@@ -100,4 +99,4 @@ role_hint_reject:
 # contract_starts_after: null
 # contract_starts_before: null
 
-notes: "Building construction (Hochbau) contractor based in Munich, handling contracts from roughly EUR 4.9k up to EUR 98m, with core focus on Oberbayern/Bayern and willingness to travel to adjacent German states. Explicitly excludes any offshore or marine work. [Generated at tolerance: cpv=0.50, nuts=0.50, value=0.50, exclude=0.50, role_hint=0.50]"
+notes: "Small electrical contractor based in Frankfurt am Main, focused on building electrical installation work (Fachlos Elektro, wiring, lighting, small maintenance jobs) with a stated ceiling of about EUR 37,800 per contract. Core region is Frankfurt/Rhein-Main and Hessen, with loosening steps reaching into neighbouring federal states and adjacent building-services/electrical-equipment CPV categories. [Generated at tolerance: cpv=0.50, nuts=0.50, value=0.50, exclude=0.50, role_hint=0.50]"

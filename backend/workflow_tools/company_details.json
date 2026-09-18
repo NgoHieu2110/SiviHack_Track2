@@ -1,11 +1,11 @@
 {
-  "does": "Building construction",
-  "placeOfPerformance": "Munich",
-  "contractValueMin": "4893",
-  "contractValueMax": "98329844",
-  "exclusions": "no offshore work",
+  "does": "Electrical",
+  "placeOfPerformance": "Frankfurt",
+  "contractValueMin": "0",
+  "contractValueMax": "37788",
+  "exclusions": "",
   "specifications": "",
-  "revenue": 83998498.0,
-  "employees": 40,
-  "submittedAt": "2026-09-18T12:41:32.782264+00:00"
+  "revenue": 7839983.0,
+  "employees": 30,
+  "submittedAt": "2026-09-18T13:04:09.214144+00:00"
 }

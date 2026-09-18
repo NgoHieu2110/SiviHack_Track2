@@ -1,9 +1,9 @@
 {
   "tenders": {
-    "42beb090-d7f5-4983-b6f4-63f2a0ba21e3": {
+    "71dcdb38-8f8a-4f56-a9e4-8dcc8ea05d74": {
       "priority": -1,
-      "first_seen_run": "2026-09-18T12:39:14.186789+00:00",
-      "last_seen_run": "2026-09-18T12:40:23.922749+00:00",
+      "first_seen_run": "2026-09-18T13:04:40.729958+00:00",
+      "last_seen_run": "2026-09-18T13:06:41.185315+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -13,37 +13,18 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Lüftung - Kälte",
-      "authority": "Land Berlin, vertreten durch das Bezirksamt Treptow-Köpenick von Berlin",
-      "value": 366035.93,
+      "title": "Neubau Werkstattgebäude Theodor-Litt-Schule, Ringallee 62, 35390 Gießen",
+      "authority": "Magistrat der Universitätsstadt Gießen - Hochbauamt -",
+      "value": 80830.0,
       "currency": "EUR",
       "deadline": null,
       "removed": true,
-      "removed_at": "2026-09-18T12:40:46.247177+00:00"
+      "removed_at": "2026-09-18T13:07:21.214600+00:00"
     },
-    "5e566cbf-cc6f-47d8-b7ad-da1b857ba0b5": {
-      "priority": 11,
-      "first_seen_run": "2026-09-18T12:39:14.186789+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Lieferung einer meteorologischen Drohne zur Wetterbeobachtung",
-      "authority": "Deutsches Zentrum für Luft- und Raumfahrt e.V. (DLR)",
-      "value": 249000.0,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "fca1b79a-e486-4d4d-8151-b962407eb148": {
+    "a3f47b87-40c0-4ecd-87d2-d9f9369e1561": {
       "priority": -1,
-      "first_seen_run": "2026-09-18T12:39:14.186789+00:00",
-      "last_seen_run": "2026-09-18T12:39:14.186789+00:00",
+      "first_seen_run": "2026-09-18T13:04:40.729958+00:00",
+      "last_seen_run": "2026-09-18T13:04:40.729958+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -53,480 +34,18 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Tübingen, Universität, Institut für Sportwissenschaft, Neuordnung, 1. BA\n\nIFS W124, 4440.006 Elektro Austausch NSHV",
-      "authority": "Vermögen und Bau Baden-Württemberg, Amt Tübingen",
-      "value": 83127.0,
+      "title": "Neubau einer 2-Feld-Sporthalle am Martin von Cochem-Gymnasium",
+      "authority": "Kreisverwaltung Cochem-Zell",
+      "value": 645400.0,
       "currency": "EUR",
       "deadline": null,
       "removed": true,
-      "removed_at": "2026-09-18T12:39:42.832496+00:00"
-    },
-    "01a0a96a-37c0-4640-b93d-2f0aa2597366": {
-      "priority": 10,
-      "first_seen_run": "2026-09-18T12:39:44.012274+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "71-2026-40 Zwickauer Mulde, Zwickau- Crossen M45 - F-km 82+765 bis 84+500 - Gutachterleistungen",
-      "authority": "Landestalsperrenverwaltung des Freistaates Sachsen, Betrieb Zwickauer Mulde / Obere Weiße Elster",
-      "value": 16500,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "08763a6e-46a6-4e98-84da-56be25797ade": {
-      "priority": -1,
-      "first_seen_run": "2026-09-18T12:39:44.012274+00:00",
-      "last_seen_run": "2026-09-18T12:42:01.847390+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Sanitär - Heizung",
-      "authority": "Land Berlin, vertreten durch das Bezirksamt Treptow-Köpenick von Berlin",
-      "value": 307803.95,
-      "currency": "EUR",
-      "deadline": null,
-      "removed": true,
-      "removed_at": "2026-09-18T12:42:48.633623+00:00"
-    },
-    "2ff07f76-b2a2-48d8-97fb-c56e36fc20e9": {
-      "priority": 10,
-      "first_seen_run": "2026-09-18T12:39:44.012274+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Beratungsleistungen für die Vorbereitung, Durchführung und Nachbereitung des Öffentlichkeitsbeteiligungsverfahren zur Stilllegung des ERA Morsleben",
-      "authority": "Bundesgesellschaft für Endlagerung mbH (BGE)",
-      "value": 746000,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "65fca93d-56c9-4101-a02a-73b8c1242f3f": {
-      "priority": 10,
-      "first_seen_run": "2026-09-18T12:39:44.012274+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Betriebsdienst und Unterhaltungsarbeiten 26-28",
-      "authority": "Die Autobahn GmbH des Bundes - NL Ost",
-      "value": 2457144.2,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "c5e36c76-a778-42ad-8cf4-60a17827e90c": {
-      "priority": 10,
-      "first_seen_run": "2026-09-18T12:39:44.012274+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Rahmenvereinbarung Kopiertechnik BTU 2027",
-      "authority": "Brandenburgische Technische Universität Cottbus-Senftenberg",
-      "value": 315000.0,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "f1d923c0-f3ea-4eb0-9d84-6ad35e1f5f0f": {
-      "priority": -1,
-      "first_seen_run": "2026-09-18T12:39:44.012274+00:00",
-      "last_seen_run": "2026-09-18T12:42:50.552244+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Los 2: Verkehrsführung während der Bauzeit",
-      "authority": "Die Autobahn GmbH des Bundes - NL Ost",
-      "value": 3202616.83,
-      "currency": "EUR",
-      "deadline": null,
-      "removed": true,
-      "removed_at": "2026-09-18T12:43:07.852871+00:00"
-    },
-    "18c267d4-f5ed-4cd0-a0de-ee30241e0412": {
-      "priority": 9,
-      "first_seen_run": "2026-09-18T12:40:23.922749+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Überlassung der Software Zeus eXperience",
-      "authority": "Leitstelle für Informationstechnologie der sächsischen Justiz",
-      "value": 219005,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "a1c9445b-e641-4ccd-874b-bc30d67b4ae9": {
-      "priority": 9,
-      "first_seen_run": "2026-09-18T12:40:23.922749+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "RV Instandsetzungsarbeiten an MS-Transformatoren bis 1000 kVA ",
-      "authority": "Stromnetz Berlin GmbH",
-      "value": 1,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "b391cb39-181d-4728-82cf-6480470a650f": {
-      "priority": 9,
-      "first_seen_run": "2026-09-18T12:40:23.922749+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Erweiterung der Oracle Database Appliances (ODA)",
-      "authority": "Leitstelle für Informationstechnologie der sächsischen Justiz",
-      "value": 309800,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "bdc57ac0-012e-45a9-8b46-f439a4d57950": {
-      "priority": 9,
-      "first_seen_run": "2026-09-18T12:40:23.922749+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Dienstleistungsrahmenvertrag für die Gestellung von Fahrzeugen für den Winterdienst inkl.  Fahrer im Bereich der NL Ost 2026-2029, Lose 1 - 7",
-      "authority": "Die Autobahn GmbH des Bundes - NL Ost",
-      "value": 4579424.6,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "c20d44c7-3ea3-4952-b0bd-c349d0a44c49": {
-      "priority": 9,
-      "first_seen_run": "2026-09-18T12:40:23.922749+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Projektträgerschaft zur fachlichen und administrativen Umsetzung der Förderrichtlinie „Etablierung einer industriellen Bioökonomie durch die Weiterentwicklung und Skalierung biobasierter Verfahren sowie den Aufbau regionaler Innovationscluster“",
-      "authority": "Bundesministerium für Wirtschaft und Energie",
-      "value": 2520000,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "e5a3e406-5755-4e96-a136-4ae5e1bd7818": {
-      "priority": 9,
-      "first_seen_run": "2026-09-18T12:40:23.922749+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Konzessionsvergabe Zahnärztliche Mitteilungen (zm)",
-      "authority": "Kassenzahnärztliche Bundesvereinigung (KöR)",
-      "value": 35000000.0,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "381330e9-a9a0-4bc7-a13c-dcca11451662": {
-      "priority": 8,
-      "first_seen_run": "2026-09-18T12:40:48.575508+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Einführung On-Premise KI-Plattform",
-      "authority": "EWN Entsorgungswerk für Nuklearanlagen GmbH",
-      "value": 784000.0,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "41a21091-13a1-4673-a9eb-5fa733cadcc1": {
-      "priority": 8,
-      "first_seen_run": "2026-09-18T12:40:48.575508+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "ITDZ Berlin: Instandhaltung Klimatechnik",
-      "authority": "IT-Dienstleistungszentrum Berlin (AöR)",
-      "value": 4651628.0,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "53e57289-7224-4e7c-b80e-e70c3eafd7ec": {
-      "priority": 8,
-      "first_seen_run": "2026-09-18T12:40:48.575508+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "RV Fahrbahnreinigung nach Unfällen, AM Braunschweig-Hafen",
-      "authority": "Die Autobahn GmbH des Bundes - NL Nordwest",
-      "value": 975251.75,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "b6d328f5-cd55-4d41-9421-3734043c6787": {
-      "priority": 8,
-      "first_seen_run": "2026-09-18T12:40:48.575508+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "ÖFS Brutvogelkartierung 2027",
-      "authority": "Landesamt für Natur, Umwelt und Klima NRW",
-      "value": 217254.78000000003,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "c4745a16-5769-4144-a01f-0802676c2ac0": {
-      "priority": 8,
-      "first_seen_run": "2026-09-18T12:40:48.575508+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Rheinsberg (OT Linow) / Fahrsicherheitstrainingsmaßnahmen",
-      "authority": "Berufsgenossenschaftliche Bildungsstätte Linowsee e.V.",
-      "value": 1500000.0,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "f6da07ed-feae-40a5-9eac-0aa287f95e78": {
-      "priority": 8,
-      "first_seen_run": "2026-09-18T12:40:48.575508+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "RV Fahrbahnreinigung nach Unfällen, AM Braunschweig-Rüningen",
-      "authority": "Die Autobahn GmbH des Bundes - NL Nordwest",
-      "value": 685881.75,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "4b4c0d29-4937-4187-8229-cd08194aaad9": {
-      "priority": 7,
-      "first_seen_run": "2026-09-18T12:42:01.847390+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Errichtung und Betrieb eines NGA-Netzes in der Gemeinde Engelthal",
-      "authority": "Gemeinde Engelthal",
-      "value": 3834000,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "ade92382-24f2-4d51-9338-6af20c00d07a": {
-      "priority": 7,
-      "first_seen_run": "2026-09-18T12:42:01.847390+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Rahmenvereinbarung Informations- und Werbekampagnen",
-      "authority": "Bayerisches Staatsministerium für Unterricht und Kultus",
-      "value": 2048000,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "b7fc6eb2-6b57-4c26-8a68-ca6243825e97": {
-      "priority": -1,
-      "first_seen_run": "2026-09-18T12:42:01.847390+00:00",
-      "last_seen_run": "2026-09-18T12:43:37.249859+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "BGEA Oberwinden",
-      "authority": "Energienetze Bayern GmbH & Co.KG",
-      "value": 2500000.0,
-      "currency": "EUR",
-      "deadline": null,
-      "removed": true,
-      "removed_at": "2026-09-18T12:43:55.141648+00:00"
-    },
-    "14767811-c097-4240-becf-8cfa836eec0d": {
-      "priority": 6,
-      "first_seen_run": "2026-09-18T12:42:50.552244+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Fraunhofer-Gesellschaft 80-00031-2800-E Fachpl. ELT AG 4,5,6 - Rahmenvereinbarung Reg 20_02",
-      "authority": "Fraunhofer-Gesellschaft e.V. - Vergabestelle Bau",
-      "value": 600000,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "9346d1c3-9f49-4bf5-8426-77fb0dbce7e5": {
-      "priority": 6,
-      "first_seen_run": "2026-09-18T12:42:50.552244+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Externe Ausbildung „Zugführer Freiwillige Feuerwehr“",
-      "authority": "Thüringer Landesfeuerwehr- u. Katastrophenschutzschule",
-      "value": 559000,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "a5d66d73-0159-47f4-a32b-6fc60c785c56": {
-      "priority": 6,
-      "first_seen_run": "2026-09-18T12:42:50.552244+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Schulbücher im Rahmen der Lernmittelfreiheit - Rahmenvereinbarung",
-      "authority": "Stadt Fürth",
-      "value": 1831775.7,
-      "currency": "EUR",
-      "deadline": null
+      "removed_at": "2026-09-18T13:05:39.069751+00:00"
     },
     "a9d5050d-b01e-4438-a4d1-2865a624f49d": {
       "priority": -1,
-      "first_seen_run": "2026-09-18T12:42:50.552244+00:00",
-      "last_seen_run": "2026-09-18T12:43:10.012571+00:00",
+      "first_seen_run": "2026-09-18T13:04:40.729958+00:00",
+      "last_seen_run": "2026-09-18T13:05:40.646597+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -542,12 +61,12 @@
       "currency": "EUR",
       "deadline": null,
       "removed": true,
-      "removed_at": "2026-09-18T12:43:32.862808+00:00"
+      "removed_at": "2026-09-18T13:05:54.586964+00:00"
     },
-    "f01d669e-6d57-4dd8-bc5a-9d5b9f77200a": {
-      "priority": 6,
-      "first_seen_run": "2026-09-18T12:42:50.552244+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+    "2eb6876d-4fdc-4291-8398-52f74583f7f6": {
+      "priority": 4,
+      "first_seen_run": "2026-09-18T13:05:40.646597+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -557,16 +76,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Beschaffung eines Tanklöschfahrzeugs TLF 4000 für die Feuerwehr Altenstadt/Iller nach aktueller Norm DIN 14530-21 (Ausgabe 11/2019), DIN EN 1846 1-3 und $13 der UVV \"Feuerwehren\" und Beladesatz Vegetationsbrandbekämpfung nach DIN/TS 14530-29.",
-      "authority": "Markt Altenstadt",
-      "value": 635000,
+      "title": "Gesamtsanierung uPVA-Hauptwache; Hier: Projektsteuerungsleistungen LPH0-2",
+      "authority": "Stadtwerke Verkehrsgesellschaft Frankfurt am Main mbH (VGF)",
+      "value": 1,
       "currency": "EUR",
       "deadline": null
     },
-    "f076ebab-3781-4929-83fd-4559926ddc05": {
-      "priority": 6,
-      "first_seen_run": "2026-09-18T12:42:50.552244+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+    "42beb090-d7f5-4983-b6f4-63f2a0ba21e3": {
+      "priority": 4,
+      "first_seen_run": "2026-09-18T13:05:40.646597+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -576,16 +95,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Unterhaltsreinigung in der Bayerischen Staatskanzlei",
-      "authority": "Bayerische Staatskanzlei",
-      "value": 1900000,
+      "title": "Lüftung - Kälte",
+      "authority": "Land Berlin, vertreten durch das Bezirksamt Treptow-Köpenick von Berlin",
+      "value": 366035.93,
       "currency": "EUR",
       "deadline": null
     },
-    "12d399d4-743f-4ef9-8d50-661c788e7327": {
-      "priority": 5,
-      "first_seen_run": "2026-09-18T12:43:10.012571+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+    "b2fa2db4-72cb-436e-ad78-efe897ed6916": {
+      "priority": 4,
+      "first_seen_run": "2026-09-18T13:05:40.646597+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -595,16 +114,54 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Fraunhofer-Gesellschaft 80-00031-2800-D Fachpl. HLSK AG 1-2-3-7-8  - Rahmenvereinbarung Reg 20_02",
-      "authority": "Fraunhofer-Gesellschaft e.V. - Vergabestelle Bau",
-      "value": 800000,
+      "title": "Modernisierung Olgastraße\n\nBA2_Heizungs-, Lüftungs- und Sanitärarbeiten",
+      "authority": "Staatl. Hochbauamt Stuttgart",
+      "value": 336243.98,
       "currency": "EUR",
       "deadline": null
     },
-    "6e40078a-968e-4451-a6f9-0066cfea02be": {
+    "e0080899-465d-44cc-9948-857a798bf842": {
+      "priority": 4,
+      "first_seen_run": "2026-09-18T13:05:40.646597+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Planungsleistungen der Freianlage DGH Schwabenheim, Lph 5-9",
+      "authority": "Ortsgemeinde Schwabenheim",
+      "value": 415000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "f14d304a-4812-4f18-9f94-2f7358d3f8b0": {
+      "priority": 4,
+      "first_seen_run": "2026-09-18T13:05:40.646597+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Pflegeschule am ukb - Baustelleneinrichtung - VB",
+      "authority": "BG Klinikum Unfallkrankenhaus Berlin gGmbH",
+      "value": 88784.73,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "fca1b79a-e486-4d4d-8151-b962407eb148": {
       "priority": -1,
-      "first_seen_run": "2026-09-18T12:43:10.012571+00:00",
-      "last_seen_run": "2026-09-18T12:44:42.193146+00:00",
+      "first_seen_run": "2026-09-18T13:05:40.646597+00:00",
+      "last_seen_run": "2026-09-18T13:05:55.946290+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -614,18 +171,18 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Erweiterung und Sanierung GS Ichenhausen - Erweiterungsbau Gebäudeautomation",
-      "authority": "Stadt Ichenhausen",
-      "value": 15000000,
+      "title": "Tübingen, Universität, Institut für Sportwissenschaft, Neuordnung, 1. BA\n\nIFS W124, 4440.006 Elektro Austausch NSHV",
+      "authority": "Vermögen und Bau Baden-Württemberg, Amt Tübingen",
+      "value": 83127.0,
       "currency": "EUR",
       "deadline": null,
       "removed": true,
-      "removed_at": "2026-09-18T12:44:54.097627+00:00"
+      "removed_at": "2026-09-18T13:06:36.909291+00:00"
     },
-    "72116ef8-f365-4654-a1ae-dad48639eca7": {
-      "priority": 5,
-      "first_seen_run": "2026-09-18T12:43:10.012571+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+    "08763a6e-46a6-4e98-84da-56be25797ade": {
+      "priority": 3,
+      "first_seen_run": "2026-09-18T13:05:55.946290+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -635,16 +192,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "RV über die Lieferung von Formblättern und Formularsätzen für die Bayer. Polizei",
-      "authority": "Freistaat Bayern, vertreten durch das Logistikzentrum der Bayerischen Polizei (LZBP)",
-      "value": 586000,
+      "title": "Sanitär - Heizung",
+      "authority": "Land Berlin, vertreten durch das Bezirksamt Treptow-Köpenick von Berlin",
+      "value": 307803.95,
       "currency": "EUR",
       "deadline": null
     },
-    "7844bb7e-551c-4b80-8e27-efa3b24aeb75": {
-      "priority": 5,
-      "first_seen_run": "2026-09-18T12:43:10.012571+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+    "27ed9458-90c1-4261-9574-28dc2f1923c0": {
+      "priority": 3,
+      "first_seen_run": "2026-09-18T13:05:55.946290+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -654,170 +211,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Abschluss einer Rahmenvereinbarung über die \nDurchführung von Baumkontrollen",
-      "authority": "BVC Altona",
-      "value": 1200000.0,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "9a1b2062-053c-47dc-bc6c-b4cd4604c5f2": {
-      "priority": -1,
-      "first_seen_run": "2026-09-18T12:43:10.012571+00:00",
-      "last_seen_run": "2026-09-18T12:43:59.699619+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Erweiterung und Sanierung GS Ichenhausen - Erweiterungsbau feste Möblierung",
-      "authority": "Stadt Ichenhausen",
-      "value": 15000000,
-      "currency": "EUR",
-      "deadline": null,
-      "removed": true,
-      "removed_at": "2026-09-18T12:44:34.962824+00:00"
-    },
-    "f9130abe-6656-41ee-90e5-fa88244bc975": {
-      "priority": 5,
-      "first_seen_run": "2026-09-18T12:43:10.012571+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "LF 20 KatS Feuerwehr Schongau",
-      "authority": "Stadt Schongau",
-      "value": 530000.0,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "24baa84a-166f-451d-9ab5-71717842f4ca": {
-      "priority": 4,
-      "first_seen_run": "2026-09-18T12:43:37.249859+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Unterhalts- und Grundreinigung sowie Gästezimmerreinigung für die Akademie für Lehrerfortbildung u. Personalführung (ALP) in Dillingen a. d. D.",
-      "authority": "Freistaat Bayern Vertreten durch die Akademie für Lehrerfortbildung und Personalführung (ALP)",
-      "value": 2971705.33,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "3446a559-15f9-491b-8476-6d32e4154c93": {
-      "priority": 4,
-      "first_seen_run": "2026-09-18T12:43:37.249859+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "EPD TruDose Gamma mit PTB-Zulassung",
-      "authority": "EWN Entsorgungswerk für Nuklearanlagen GmbH",
+      "title": "Anna-Seghers-Straße - Neubau eines viergeschossigen Wohngebäudes mit Kindertagesstätte - WDVS",
+      "authority": "Stadt Brühl - Der Bürgermeister",
       "value": 300000.0,
       "currency": "EUR",
       "deadline": null
     },
-    "638de82a-f853-4b99-b7f6-276f72d8f122": {
-      "priority": 4,
-      "first_seen_run": "2026-09-18T12:43:37.249859+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Microsoft Enterprise Agreement Anschlussvertrag",
-      "authority": "Kreisstadt Bergheim Der Bürgermeister",
-      "value": 550000.0,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "64627419-a935-4b22-b088-0b592223ade8": {
-      "priority": 4,
-      "first_seen_run": "2026-09-18T12:43:37.249859+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Lieferung von CO2-neutralem Erdgas für das Regionalwerk Lech-Wertach-Stauden gKU für das Lieferjahr 2027.",
-      "authority": "Regionalwerk Lech-Wertach-Stauden gKU - vertreten durch die ISPEX Consulting GmbH",
-      "value": 540000,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "911d195e-1c2c-498f-9b76-89b4fa79917a": {
-      "priority": 4,
-      "first_seen_run": "2026-09-18T12:43:37.249859+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Lieferung von elektrischer Energie aus erneuerbaren Energien für das Regionalwerk Lech-Wertach-Stauden gKU für das Lieferjahr 2027",
-      "authority": "Regionalwerk Lech-Wertach-Stauden gKU - vertreten durch die ISPEX Consulting GmbH",
-      "value": 1600000,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "e5478775-6157-49db-8955-95adcb0e351f": {
-      "priority": 4,
-      "first_seen_run": "2026-09-18T12:43:37.249859+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "HWS Regensburg Unterer Wöhrd \nProjektsteuerung",
-      "authority": "Wasserwirtschaftsamt Regensburg",
-      "value": 1260000.0,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "53c653ec-97d7-4217-88f0-f41066471599": {
+    "3c019483-2a3c-46d7-a897-8dcef03c0863": {
       "priority": 3,
-      "first_seen_run": "2026-09-18T12:43:59.699619+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:05:55.946290+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -827,16 +230,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Klosterkirche Weissenau, Instandsetzung und Brandschutzmaßnahmen\n\nKonservierung und Restaurierung barocker gefasster Ausstattung,  Kanzel und 7 Altäre, BE2/3",
-      "authority": "Vermögen und Bau Baden-Württemberg, Amt Ravensburg",
-      "value": 603513.0,
+      "title": " Max-Planck-Institut für Biophysik, Frankfurt am Main  - Teilumbau und Sanierung: Projektsteuerung",
+      "authority": "Max-Planck-Gesellschaft , GV-Bauabteilung",
+      "value": 0.01,
       "currency": "EUR",
       "deadline": null
     },
-    "a4ebdf6f-6329-43df-9d3c-ef7651982932": {
+    "7efb5f65-2b5c-426d-a79b-907bfebac095": {
       "priority": 3,
-      "first_seen_run": "2026-09-18T12:43:59.699619+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:05:55.946290+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -846,16 +249,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Niederspannungsverteilungen in Ortsnetzstationen (NSV-ONS)",
-      "authority": "Thüga Aktiengesellschaft",
-      "value": 18814000.0,
+      "title": "Dachdeckerarbeiten_Freiherr-vom-Stein-Schule / Europaschule, Ringstraße 33, 35075 Gladenbach_Ersatzneubau Förderstufentrakt",
+      "authority": "Landkreis Marburg-Biedenkopf ",
+      "value": 352066.31,
       "currency": "EUR",
       "deadline": null
     },
-    "a92c4627-10a8-412f-bb81-a51e3bb7c7f9": {
+    "cad72a5b-ff15-4474-a524-642766d9acab": {
       "priority": 3,
-      "first_seen_run": "2026-09-18T12:43:59.699619+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:05:55.946290+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -865,16 +268,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Rahmenvertrag Prüfung von elektrischen Betriebsmitteln 2026",
-      "authority": "Julius-Maximilians-Universität Würzburg als staatliche Einrichtung in Vertretung des FS Bayern",
-      "value": 660000,
+      "title": "Heizungstechnische Anlagen nach DIN 18380",
+      "authority": "Stadt Göttingen",
+      "value": 414674.53,
       "currency": "EUR",
       "deadline": null
     },
-    "e11f8d34-3b9a-475a-af57-ae8dbabe5b81": {
+    "e781b8ec-e52a-4858-bfe1-2f3d161e0395": {
       "priority": 3,
-      "first_seen_run": "2026-09-18T12:43:59.699619+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:05:55.946290+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -884,54 +287,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Stromlieferung Bezirk Oberbayern 2027 bis 2030",
-      "authority": "Bezirk Oberbayern",
-      "value": 4960000.0,
+      "title": "Weiterentwicklung der Softwarekomponente \"GeoBox-Feldatlas\"",
+      "authority": "DLR Rheinhessen-Nahe-Hunsrück",
+      "value": 300000.0,
       "currency": "EUR",
       "deadline": null
     },
-    "e86c363e-6258-43e0-a204-b15d462b29f8": {
-      "priority": 3,
-      "first_seen_run": "2026-09-18T12:43:59.699619+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Beschaffung eines Online-Bezahlsystems (Payment-Modul mit zugehörigem Online-Portal über einen PSP)",
-      "authority": "Bayer. Polizeiverwaltungsamt",
-      "value": 1237316,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "f58c78db-2abb-4a18-a630-f839ca2b12de": {
-      "priority": 3,
-      "first_seen_run": "2026-09-18T12:43:59.699619+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "tolerance": {
-        "cpv": 0.5,
-        "nuts": 0.5,
-        "value": 0.5,
-        "exclude": 0.5,
-        "role_hint": 0.5
-      },
-      "title": "Erweiterung und Sanierung GS Ichenhausen - Trockenbauarbeiten",
-      "authority": "Stadt Ichenhausen",
-      "value": 15000000,
-      "currency": "EUR",
-      "deadline": null
-    },
-    "7256f3c0-47e7-4428-9e63-3bf8b7d09a4d": {
+    "485dfdf8-0f7f-472f-968e-666f7792f91a": {
       "priority": 2,
-      "first_seen_run": "2026-09-18T12:44:42.193146+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:06:41.185315+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -941,16 +306,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": " Sanierung Baulich-Technische Infrastruktur: Tischlerarbeiten  ",
-      "authority": "Max-Planck-Gesellschaft Abt.III",
-      "value": 965350.0,
+      "title": "2 GW HVDC Offshore Platform and Converter System (2 GW HVDC System) for the NorthSeaConnector 1 Project (Yard Scope)",
+      "authority": "50Hertz Transmission GmbH",
+      "value": 1,
       "currency": "EUR",
       "deadline": null
     },
-    "8697be1d-ff27-4b7c-8126-545a9b1f341b": {
+    "4fd38e19-0ee6-4ba2-9e35-213da1f2c75b": {
       "priority": 2,
-      "first_seen_run": "2026-09-18T12:44:42.193146+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:06:41.185315+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -960,16 +325,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Ausschreibung Unterhaltsreinigung",
-      "authority": "Bayerische Theaterakademie August Everding",
-      "value": 500000,
+      "title": "Schülerbeförderung gem. § 161 Hessisches Schulgesetz Helen-Keller-Schule - ab 2027",
+      "authority": "Stadt Rüsselsheim am Main",
+      "value": 1.0,
       "currency": "EUR",
       "deadline": null
     },
-    "90fbafdc-5e9c-4d5b-be32-9d3536f6e7ed": {
+    "9ad7cb70-56ac-4e93-ad85-e249a639d263": {
       "priority": 2,
-      "first_seen_run": "2026-09-18T12:44:42.193146+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:06:41.185315+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -979,16 +344,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Internet Relaunch des Bezirk Oberbayern",
-      "authority": "Bezirk Oberbayern",
-      "value": 316000.0,
+      "title": "Gebäudeautomation",
+      "authority": "Land Berlin vertr. durch BA Mitte v. Berlin",
+      "value": 152134.92,
       "currency": "EUR",
       "deadline": null
     },
-    "aabd1acc-6791-4c26-8e8b-3989986bd08c": {
+    "a1c9445b-e641-4ccd-874b-bc30d67b4ae9": {
       "priority": 2,
-      "first_seen_run": "2026-09-18T12:44:42.193146+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:06:41.185315+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -998,16 +363,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Vie_EVB-IT-Wartungsvertrag_EDV_2026",
-      "authority": "Bezirksklinikum Mainkofen",
-      "value": 1300000,
+      "title": "RV Instandsetzungsarbeiten an MS-Transformatoren bis 1000 kVA ",
+      "authority": "Stromnetz Berlin GmbH",
+      "value": 1,
       "currency": "EUR",
       "deadline": null
     },
-    "c5df1d51-b7ad-4a66-acd8-648402e705b8": {
+    "b6d328f5-cd55-4d41-9421-3734043c6787": {
       "priority": 2,
-      "first_seen_run": "2026-09-18T12:44:42.193146+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:06:41.185315+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -1017,16 +382,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Schülerbeförderungsleistungen ab Schuljahr 2026/27",
-      "authority": "Stadt Coburg",
-      "value": 695000,
+      "title": "ÖFS Brutvogelkartierung 2027",
+      "authority": "Landesamt für Natur, Umwelt und Klima NRW",
+      "value": 217254.78000000003,
       "currency": "EUR",
       "deadline": null
     },
-    "fd675eec-faa8-4396-9b76-c963657aa336": {
+    "d915e6fc-98f1-4026-b89a-ca71511550d7": {
       "priority": 2,
-      "first_seen_run": "2026-09-18T12:44:42.193146+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:06:41.185315+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -1036,16 +401,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Pflanz-, Ansaat- und Pflegearbeiten nach ATV DIN 18320",
-      "authority": "Stadt Würzburg",
-      "value": 1073538.5,
+      "title": "Rahmenvereinbarungen für die Möblierung der Arbeitsplätze,\nBesprechungsflächen und Wartebereiche in der Kreisverwaltung Germersheim\nim Rahmen eines modernen Bürokonzepts",
+      "authority": "Kreisverwaltung Germersheim",
+      "value": 600000.0,
       "currency": "EUR",
       "deadline": null
     },
-    "41da2fe6-48b5-4c7c-9a4c-7bf045a50f72": {
+    "0d06762e-e42a-44c3-96ef-618a5fa055fd": {
       "priority": 1,
-      "first_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:07:28.635257+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -1055,16 +420,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": " Rahmenvereinbarungen Programmier- und Beratungsleistungen zur Anwendungsentwicklung im Ressort des StMELF",
-      "authority": "Freistaat Bayern, vertreten durch das Bayer. StM f. Ernährung, Landwirtschaft, Forsten und Tourismus",
-      "value": 46875000.0,
+      "title": "Lieferung und Installation von GPU-basierten KI-/HPC-Infrastrukturelementen sowie Tablets mit Halterungen",
+      "authority": "Universitätsklinikum Frankfurt",
+      "value": 242794.59,
       "currency": "EUR",
       "deadline": null
     },
-    "545c7290-a2ea-4479-91c9-c319603d5208": {
+    "0ef9519d-3c29-4818-a4de-74d9d2fafdd5": {
       "priority": 1,
-      "first_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:07:28.635257+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -1074,16 +439,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Rahmenvertrag zu Herstellung (ohne Prepress) und Distribution der Druckausgaben von archäologischen Publikationen aus Buchreihen und Zeitschriften der Zentrale und verschiedener Zweiganstalten des Deutschen Archäologischen Instituts (DAI)",
-      "authority": "Deutsches Archäologisches Institut",
-      "value": 1974579,
+      "title": "Teilneubau Heinrich-Grupe-Schule 37124 Rosdorf - Trockenbauarbeiten Wände Decken Gipskarton",
+      "authority": "Gemeinde Rosdorf",
+      "value": 0.0,
       "currency": "EUR",
       "deadline": null
     },
-    "73c1f292-8249-4d29-9824-87a8996745d2": {
+    "2f3259ec-494a-445b-8973-8e88ea4d982b": {
       "priority": 1,
-      "first_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:07:28.635257+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -1093,16 +458,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Wärmedämmverbundsystem und Putzarbeiten",
-      "authority": "Stadt Dingolfing",
-      "value": 286926,
+      "title": "Generalsanierung Schule im Taubertal - Vergabe Wärmeversorgungsanlage",
+      "authority": "Landratsamt Main-Tauber-Kreis",
+      "value": 457501.91,
       "currency": "EUR",
       "deadline": null
     },
-    "ab9382c5-3ccf-406d-83fe-ea630f7c0882": {
+    "b96be751-fb7a-4b0e-8c51-95cf2f0b6932": {
       "priority": 1,
-      "first_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:07:28.635257+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -1112,16 +477,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Langzeitanmietung eines Blitz-Anhängers für vier Jahre mit der \nOption auf zwei zusätzliche Vertragsjahre",
-      "authority": "Stadt Würzburg",
-      "value": 637400.97,
+      "title": "HPE Aruba Networking - Aufhebung",
+      "authority": "Sana-Krankenhaus Hürth GmbH",
+      "value": 0.0,
       "currency": "EUR",
       "deadline": null
     },
-    "ad9bb691-827c-49f6-ba91-8cf50fce2ab3": {
+    "d31e5a38-d43a-4547-8973-c3590bacd62e": {
       "priority": 1,
-      "first_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:07:28.635257+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -1131,16 +496,16 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Digitalisierung der Ausstattung im Bildungszentrum München\nIZBN 71104",
-      "authority": "Handwerkskammer für München und Oberbayern",
-      "value": 221000.0,
+      "title": "Beschaffung eines All-in-One-Fluoreszenzmikroskops (KEYENCE BZ-X1000) mit Hypoxie-Live-Imaging-Plattform",
+      "authority": "Stiftung Tierärztliche Hochschule Hannover",
+      "value": 220000.0,
       "currency": "EUR",
       "deadline": null
     },
-    "b16e412b-1add-4310-9272-e393a56da146": {
+    "d54ec781-962f-409c-a82b-f09e4e169ca3": {
       "priority": 1,
-      "first_seen_run": "2026-09-18T12:45:01.850309+00:00",
-      "last_seen_run": "2026-09-18T12:45:01.850309+00:00",
+      "first_seen_run": "2026-09-18T13:07:28.635257+00:00",
+      "last_seen_run": "2026-09-18T13:07:28.635257+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "tolerance": {
@@ -1150,12 +515,12 @@
         "exclude": 0.5,
         "role_hint": 0.5
       },
-      "title": "Müllzwischenbunker Burgkirchen Müllkran",
-      "authority": "Zweckverband Abfallverwertung Südostbayern (ZAS)",
-      "value": 1889000.0,
+      "title": "Fassadenarbeiten",
+      "authority": "Kreisausschuss Main-Taunus-Kreis, Hochbau- und Liegenschaftsamt",
+      "value": 105000.0,
       "currency": "EUR",
       "deadline": null
     }
   },
-  "updated_at": "2026-09-18T12:45:01.933991+00:00"
+  "updated_at": "2026-09-18T13:07:28.722922+00:00"
 }
