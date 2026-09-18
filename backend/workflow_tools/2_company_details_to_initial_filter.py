@@ -83,6 +83,21 @@ anchor (~tolerance 0.0, the company's real stated band) and a "loose" anchor
 (~tolerance 1.0, effectively unbounded), and this script linearly
 interpolates between them for the requested tolerance.
 
+MATCH_MODE / MIN_CRITERIA_MATCHED (loosening the AND logic itself)
+--------------------------------------------------------------------
+Widening the ladders above only helps if fetch_tenders_oeffentlichevergabe.py's
+matches_profile() is willing to accept a tender that satisfies some but not
+all of CPV/region/value. That's controlled by two new filters.yaml fields,
+written by this script and derived automatically unless overridden:
+    --match-mode {auto,all,any}       (default: auto)
+    --min-criteria-matched N          (only used when match_mode is "any")
+"all" is the original strict AND. "any" accepts a tender if at least N of
+the *considered* core criteria (CPV/region/value -- whichever have a filter
+actually set) match, even if the rest don't. "auto" derives all/any and N
+from how loose the cpv/nuts/value tolerance dials already are -- see
+resolve_match_mode()'s docstring for the exact thresholds. exclude_keywords
+and role_hint_reject are never softened by this; they stay a hard reject.
+
 CACHING
 --------
 Gemini is called once; the raw ladder/anchor response is cached to
@@ -96,6 +111,11 @@ Usage:
     python 2_company_details_to_initial_filter.py \
         --input company_details.json --out filters.yaml \
         --tolerance 0.3 --tolerance-exclude 0.0 --tolerance-role-hint 0.7
+
+    # Broader ladders AND soft AND-logic (recommended for "too strict"):
+    python 2_company_details_to_initial_filter.py \
+        --tolerance 0.6 --tolerance-exclude 0.0 \
+        --match-mode any --min-criteria-matched 2
 """
 
 import argparse
@@ -195,6 +215,23 @@ exclude_keywords_ladder, and role_hint_ladder):
   prefix by 0.6), NOT dropping entries -- since these are membership tests
   where broader prefixes match MORE tenders, which is what "loosening"
   means for CPV/NUTS specifically.
+- Don't just narrow the SAME division at every step. From 0.4 upward, also
+  add plausibly-relevant codes from NEIGHBORING divisions/categories that
+  this kind of company could realistically bid on, subcontract into, or
+  team up on, even if they're not the company's core trade (e.g. a
+  structural-engineering firm's ladder should reach into general civil
+  works, related site-prep/earthworks, and adjacent technical-consulting
+  codes by 0.6-0.8, not just broader prefixes of its own exact niche).
+  Likewise for nuts_ladder from 0.4 upward, add neighboring/adjacent NUTS
+  regions the company could plausibly travel to or open a temporary site
+  in, not only broader prefixes containing its own region. Because
+  matches_profile() can now be configured (via match_mode/
+  min_criteria_matched, see below) to accept a tender that only satisfies
+  SOME of CPV/region/value rather than all of them, it is fine -- and
+  intended -- for the 0.6-0.8 lists to include codes/regions that are only
+  loosely related to the core profile; the match_mode setting is what
+  keeps an unrelated-but-CPV-matching or unrelated-but-region-matching
+  tender from being an automatic reject.
 - Every step 0.0 through 0.8 for cpv_ladder and nuts_ladder must be
   non-empty (a tender can't match an empty CPV or region list at all).
 
@@ -338,7 +375,13 @@ def yaml_str(s: str) -> str:
     return f'"{escaped}"'
 
 
-def render_filters_body(company: dict, ladders: dict, tol: dict) -> str:
+def render_filters_body(
+    company: dict,
+    ladders: dict,
+    tol: dict,
+    match_mode: str = "auto",
+    min_criteria_matched: int = None,
+) -> str:
     """Renders the flat filters.yaml body -- top-level fields, no
     company-key wrapper (there's only ever one company/profile)."""
     lines = []
@@ -386,6 +429,23 @@ def render_filters_body(company: dict, ladders: dict, tol: dict) -> str:
     lines.append(f"# loose [{ladders['value_min_loose']:,.0f}, {ladders['value_max_loose']:,.0f}])")
     lines.append(f"value_min: {vmin:.0f}")
     lines.append(f"value_max: {vmax:.0f}")
+    lines.append("")
+
+    resolved_mode, resolved_min, mode_avg = resolve_match_mode(tol, match_mode, min_criteria_matched)
+    avg_note = f", avg core tolerance {mode_avg:.2f}" if mode_avg is not None else " (explicitly forced)"
+    lines.append(f"# match_mode (resolved from --match-mode={match_mode}{avg_note}):")
+    lines.append("#   \"all\" -> strict AND: a tender must satisfy every one of CPV/region/")
+    lines.append("#            value that has a filter set (the original, pre-broadening")
+    lines.append("#            behavior).")
+    lines.append("#   \"any\" -> soft match: a tender passes if at least")
+    lines.append("#            min_criteria_matched of the *considered* CPV/region/value")
+    lines.append("#            criteria pass, even if the rest miss. This is what lets")
+    lines.append("#            through tenders only partially related to the profile.")
+    lines.append("# exclude_keywords / role_hint_reject are NEVER softened by this -- they")
+    lines.append("# stay a hard reject in either mode. See matches_profile() in")
+    lines.append("# fetch_tenders_oeffentlichevergabe.py for the exact rules.")
+    lines.append(f"match_mode: {yaml_str(resolved_mode)}")
+    lines.append(f"min_criteria_matched: {resolved_min if resolved_min is not None else 'null'}")
     lines.append("")
 
     excl_list, excl_step = resolve_keyword_list(ladders["exclude_keywords_ladder"], tol["exclude"])
@@ -466,6 +526,50 @@ exclude={tol_defaults['exclude']:.2f}  role_hint={tol_defaults['role_hint']:.2f}
 """
 
 
+def resolve_match_mode(
+    tol: dict,
+    match_mode: str = "auto",
+    min_criteria_matched: int = None,
+) -> tuple:
+    """Decide filters.yaml's match_mode / min_criteria_matched -- i.e.
+    whether matches_profile() in fetch_tenders_oeffentlichevergabe.py
+    requires a tender to satisfy ALL of CPV/region/value, or only SOME of
+    them (see that function's docstring for exactly what each mode does).
+
+    match_mode="auto" (the default) derives the setting from how loose the
+    cpv/nuts/value tolerance dials already are, using their average:
+        avg < 0.35            -> "all"  (strict AND, same as before this
+                                  feature existed)
+        0.35 <= avg < 0.7      -> "any", min_criteria_matched=2 (need 2 of
+                                  the considered core criteria)
+        avg >= 0.7             -> "any", min_criteria_matched=1 (any single
+                                  considered core criterion is enough)
+    These thresholds are a judgment call, not a formula from the ladder
+    logic -- tune them here if "auto" ends up too loose or too strict for
+    a given run.
+
+    Passing match_mode="all" or "any" explicitly overrides the derivation
+    entirely (min_criteria_matched still defaults to 1 if "any" is forced
+    without an explicit count). exclude_keywords / role_hint_reject are
+    never affected by this -- they stay a hard reject regardless.
+    """
+    if match_mode not in ("auto", "all", "any"):
+        raise ValueError(f"match_mode must be 'auto', 'all', or 'any', got {match_mode!r}")
+
+    if match_mode == "all":
+        return "all", None, None
+    if match_mode == "any":
+        return "any", (min_criteria_matched or 1), None
+
+    avg = (tol["cpv"] + tol["nuts"] + tol["value"]) / 3.0
+    if avg < 0.35:
+        return "all", None, avg
+    elif avg < 0.7:
+        return "any", (min_criteria_matched or 2), avg
+    else:
+        return "any", (min_criteria_matched or 1), avg
+
+
 def resolve_tolerances(
     tolerance: float = 0.5,
     tolerance_cpv: float = None,
@@ -494,6 +598,8 @@ def build_filters_yaml(
     model: str = GEMINI_MODEL_DEFAULT,
     cache_path: str = ".filter_ladders_cache.json",
     refresh: bool = False,
+    match_mode: str = "auto",
+    min_criteria_matched: int = None,
 ) -> str:
     """Core library function: given the already-loaded company dict (the
     single object from company_details.json) and resolved tolerances, call
@@ -519,7 +625,7 @@ def build_filters_yaml(
     validate_ladder(ladders["exclude_keywords_ladder"], f"{name} exclude_keywords_ladder", allow_empty_at_1_0_only=False)
     validate_ladder(ladders["role_hint_ladder"], f"{name} role_hint_ladder", allow_empty_at_1_0_only=False)
 
-    body = render_filters_body(company, ladders, tol_defaults)
+    body = render_filters_body(company, ladders, tol_defaults, match_mode, min_criteria_matched)
     print(f"  -> resolved filters.yaml body for '{name}'")
 
     return render_header(tol_defaults, cache_key) + body + "\n"
@@ -538,11 +644,18 @@ def run(
     tolerance_exclude: float = None,
     tolerance_role_hint: float = None,
     api_key: str = None,
+    match_mode: str = "auto",
+    min_criteria_matched: int = None,
 ) -> str:
     """Library entry point mirroring the CLI end to end: load
     company_details.json (a single flat company object), resolve
     tolerances, call Gemini (cached), write filters.yaml, and return its
     text.
+
+    match_mode / min_criteria_matched control how the written filters.yaml
+    combines CPV/region/value (see resolve_match_mode()'s docstring):
+    "auto" (default) derives it from how loose the tolerance dials already
+    are; "all" or "any" force it explicitly.
     """
     api_key = api_key or get_gemini_api_key()
 
@@ -569,6 +682,7 @@ def run(
     output = build_filters_yaml(
         company, tol_defaults, api_key, model=model,
         cache_path=resolved_cache_path, refresh=refresh,
+        match_mode=match_mode, min_criteria_matched=min_criteria_matched,
     )
 
     with open(out_path, "w", encoding="utf-8") as f:
@@ -593,6 +707,18 @@ def main():
     parser.add_argument("--tolerance-value", type=float, default=None)
     parser.add_argument("--tolerance-exclude", type=float, default=None)
     parser.add_argument("--tolerance-role-hint", type=float, default=None)
+
+    parser.add_argument("--match-mode", choices=["auto", "all", "any"], default="auto",
+                         help="How CPV/region/value combine in matches_profile(): 'all' is the "
+                              "original strict AND; 'any' lets a tender through if only "
+                              "--min-criteria-matched of the three considered criteria hit; "
+                              "'auto' (default) derives this from how loose cpv/nuts/value "
+                              "tolerance already are (see resolve_match_mode()).")
+    parser.add_argument("--min-criteria-matched", type=int, default=None,
+                         help="Only used when the resolved match_mode is 'any'. Minimum number "
+                              "of the considered core criteria (CPV/region/value) a tender must "
+                              "satisfy. Defaults: 'auto' picks 2 or 1 depending on tolerance; "
+                              "an explicit --match-mode any with no count given defaults to 1.")
     args = parser.parse_args()
 
     try:
@@ -614,6 +740,8 @@ def main():
             tolerance_exclude=args.tolerance_exclude,
             tolerance_role_hint=args.tolerance_role_hint,
             api_key=api_key,
+            match_mode=args.match_mode,
+            min_criteria_matched=args.min_criteria_matched,
         )
     except (FileNotFoundError, ValueError, RuntimeError) as e:
         sys.exit(f"ERROR: {e}")
