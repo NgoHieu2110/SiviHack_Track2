@@ -1,16 +1,19 @@
-2026-09-18 13:30:05 INFO     Debug log:   D:\University\PersonalProject\SiviHack_Track2\backend\logs\20260918_133005_debug.log  (also: D:\University\PersonalProject\SiviHack_Track2\backend\logs\latest_debug.log)
-2026-09-18 13:30:05 INFO     Summary log: D:\University\PersonalProject\SiviHack_Track2\backend\logs\20260918_133005_summary.log  (also: D:\University\PersonalProject\SiviHack_Track2\backend\logs\latest_summary.log)
-2026-09-18 13:30:05 INFO     company: 38 previously matched tender(s) on disk, collecting up to 3 new one(s) this run.
-2026-09-18 13:30:26 INFO     === Summary ===
-2026-09-18 13:30:26 INFO     company: 0/3 -> tenders
-2026-09-18 13:30:26 INFO       (Did not reach target within 5 days walked back. Consider loosening filters in filters.yaml or raising --max-days.)
-2026-09-18 13:30:26 INFO     Rejection breakdown (3801 tender(s) rejected this run):
-2026-09-18 13:30:26 INFO       no CPV match: 3586 (94%)
-2026-09-18 13:30:26 INFO       excluded by role-hint keyword : 85 (2%)
-2026-09-18 13:30:26 INFO       no value found: 71 (2%)
-2026-09-18 13:30:26 INFO       no region match: 48 (1%)
-2026-09-18 13:30:26 INFO       excluded by keyword : 7 (0%)
-2026-09-18 13:30:26 INFO       value 752,000,000 above max 4,311,087: 1 (0%)
-2026-09-18 13:30:26 INFO       value 9,811,000 above max 4,311,087: 1 (0%)
-2026-09-18 13:30:26 INFO       value 10,000,000 above max 4,311,087: 1 (0%)
-2026-09-18 13:30:26 INFO       value 6,411,000 above max 4,311,087: 1 (0%)
+2026-09-18 14:44:54 INFO     Debug log:   D:\University\PersonalProject\SiviHack_Track2\backend\logs\20260918_144454_debug.log  (also: D:\University\PersonalProject\SiviHack_Track2\backend\logs\latest_debug.log)
+2026-09-18 14:44:54 INFO     Summary log: D:\University\PersonalProject\SiviHack_Track2\backend\logs\20260918_144454_summary.log  (also: D:\University\PersonalProject\SiviHack_Track2\backend\logs\latest_summary.log)
+2026-09-18 14:44:54 INFO     company: 54 previously matched tender(s) on disk, collecting up to 6 new one(s) this run.
+2026-09-18 14:44:59 INFO       MATCH (1/6): Digitalisierung der Ausstattung im Bildungszentrum München
+IZBN 71104
+2026-09-18 14:44:59 INFO       MATCH (2/6): Langzeitanmietung eines Blitz-Anhängers für vier Jahre mit der 
+Option
+2026-09-18 14:44:59 INFO       MATCH (3/6):  Rahmenvereinbarungen Programmier- und Beratungsleistungen zur Anwendu
+2026-09-18 14:44:59 INFO       MATCH (4/6): Wärmedämmverbundsystem und Putzarbeiten
+2026-09-18 14:44:59 INFO       MATCH (5/6): Rahmenvertrag zu Herstellung (ohne Prepress) und Distribution der Druc
+2026-09-18 14:45:01 INFO       MATCH (6/6): Müllzwischenbunker Burgkirchen Müllkran
+2026-09-18 14:45:01 INFO     === Summary ===
+2026-09-18 14:45:01 INFO     company: 6/6 -> tenders
+2026-09-18 14:45:01 INFO     Rejection breakdown (4275 tender(s) rejected this run):
+2026-09-18 14:45:01 INFO       no value found: 3111 (73%)
+2026-09-18 14:45:01 INFO       excluded by role-hint keyword : 912 (21%)
+2026-09-18 14:45:01 INFO       only 1/3 core criteria matched: 214 (5%)
+2026-09-18 14:45:01 INFO       only 0/3 core criteria matched: 30 (1%)
+2026-09-18 14:45:01 INFO       excluded by keyword : 8 (0%)

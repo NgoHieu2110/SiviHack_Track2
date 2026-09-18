@@ -12,8 +12,8 @@ pipeline at the new tolerance and hands back one replacement tender.
 EXPECTED INPUT (see main.py's RefineTendersRequest)
 -----------------------------------------------------
 A JSON object with the 3 tenders' full raw markdown (exactly as returned by
-5_select_tenders.py / a prior /tenders/match response) and which one of the
-three was dismissed:
+a prior /tenders/match response's matches[i].tender.markdown) and which one
+of the three was dismissed:
 
     {
       "tenders": ["<full md of tender A>", "<full md of tender B>", "<full md of tender C>"],
@@ -66,14 +66,16 @@ WHAT run() ACTUALLY DOES
      -- moves its .md to tenders_seen/, marks it removed in index.json).
   5. Rewrite filters.yaml at the new tolerance (calls
      2_company_details_to_initial_filter.run(), reusing the cached
-     ladder/anchors -- no new Gemini call as long as the cache from the
+     ladder/anchors -- no new Claude call as long as the cache from the
      original filter build is still there).
   6. Re-runs the fetch (calls 3_run_filter_for_tenders.run_filter_for_tenders())
      so new candidates get evaluated against the new, wider/narrower filter
      and index.json's priorities update.
-  7. Picks exactly ONE new top-priority tender (calls
-     5_select_tenders.select_tenders(count=1)) to replace the one that was
-     removed, and returns it alongside the new tolerance.
+  7. Picks exactly ONE replacement tender via Claude (calls
+     7_select_from_raw_tenders.select_tenders_with_ai_from_raw(count=1),
+     excluding the 2 kept tenders) to replace the one that was removed, and
+     returns it -- TenderMatch-shaped, like every other tender the frontend
+     already has -- alongside the new tolerance.
 
 Importable use:
     import importlib.util
@@ -145,8 +147,8 @@ def load_run_filter_module():
     return _load_module("run_filter_for_tenders", SCRIPT_DIR / "3_run_filter_for_tenders.py")
 
 
-def load_select_module():
-    return _load_module("select_tenders", SCRIPT_DIR / "5_select_tenders.py")
+def load_select_from_raw_module():
+    return _load_module("select_from_raw", SCRIPT_DIR / "7_select_from_raw_tenders.py")
 
 
 def load_remove_module():
@@ -247,8 +249,8 @@ def change_filter_tolerance(
     """Library entry point (see module docstring for the full flow).
 
     `tenders` must have exactly 3 entries (full raw tender markdown, as
-    returned by 5_select_tenders.py); `removed_index` (0-2) says which one
-    the user dismissed. Returns:
+    returned by a prior /tenders/match response); `removed_index` (0-2)
+    says which one the user dismissed. Returns:
 
         {
           "removed": {...},              # result of remove_tender()
@@ -307,7 +309,7 @@ def change_filter_tolerance(
 
     # --- 4. Rewrite filters.yaml at the new tolerance -----------------------
     # Reuses build_filters_yaml's cache (keyed by company name) -- no new
-    # Gemini call as long as the cache from the original filter build is
+    # Claude call as long as the cache from the original filter build is
     # still on disk next to filters.yaml.
     filter_module = load_filter_module()
     filter_module.run(
@@ -333,10 +335,27 @@ def change_filter_tolerance(
     )
 
     # --- 6. Pick exactly one replacement ------------------------------------
-    select_module = load_select_module()
+    # Same AI-based selector /tenders/match uses (see
+    # 7_select_from_raw_tenders.py), so the replacement is TenderMatch-shaped
+    # ({tender, score, reasons, considerations, summary}) exactly like every
+    # other tender the frontend already has -- not the older
+    # 5_select_tenders.py's flat priority-only dict, which the frontend
+    # can't render (it expects `.tender`, not the tender's fields directly).
+    # Excludes the 2 kept tenders so Claude can't just re-suggest one of them.
+    if not company_details_path.exists():
+        raise FileNotFoundError(f"company details file not found: {company_details_path}")
+    with open(company_details_path, "r", encoding="utf-8") as f:
+        company_profile = json.load(f)
+
+    select_from_raw_module = load_select_from_raw_module()
     try:
-        replacement_list = select_module.select_tenders(count=1, tenders_dir=tenders_dir)
-    except (FileNotFoundError, ValueError) as e:
+        replacement_list = select_from_raw_module.select_tenders_with_ai_from_raw(
+            profile=company_profile,
+            count=1,
+            raw_dir=tenders_dir,
+            exclude_ids=set(kept_ids),
+        )
+    except (FileNotFoundError, ValueError, RuntimeError) as e:
         print(f"  No replacement tender available: {e}")
         replacement_list = []
 

@@ -4,7 +4,7 @@ backend/workflow_tools/1_company_md_to_company_details.py
 
 Converts a freeform Markdown company profile (e.g. company.md) into a
 structured JSON record matching the schema used in company_details.json,
-using the Gemini API to do the extraction.
+using the Claude API to do the extraction.
 
 Importable use:
     from importlib import import_module
@@ -26,28 +26,28 @@ sibling script in the same folder do:
     spec.loader.exec_module(mod)
 
 CLI usage (unchanged):
-    export GEMINI_API_KEY="your-key-here"   # or set it in backend/.env
+    export ANTHROPIC_API_KEY="your-key-here"   # or set it in backend/.env
     python 1_company_md_to_company_details.py path/to/company.md \
-        [--out company_details.json] [--model gemini-2.5-flash]
+        [--out company_details.json] [--model claude-opus-5]
 
 Behavior:
     - Reads the markdown file.
-    - Sends it to Gemini with a prompt describing the exact target schema
+    - Sends it to Claude with a prompt describing the exact target schema
       (mirroring the fields seen in company_details.json: name, description,
       Revenue, Employees, founded, contractNature, does, placeOfPerformance,
       contractValueMin, contractValueMax, exclusions, specifications).
-    - Parses Gemini's JSON response.
+    - Parses Claude's JSON response.
     - If --out already exists and contains {"companies": [...]}, the new
       company record is appended to that list. Otherwise a new file is
       created with that structure.
 
 Security note:
-    The Gemini API key is read from the GEMINI_API_KEY environment variable
-    (loading backend/.env automatically if it's not already set -- see
-    common.py). Never hardcode API keys in source files or commit them to
-    version control. If a key has ever been pasted into a chat, a document,
-    or a public repo, treat it as compromised and rotate it immediately in
-    Google AI Studio.
+    The Anthropic API key is read from the ANTHROPIC_API_KEY environment
+    variable (loading backend/.env automatically if it's not already set --
+    see common.py). Never hardcode API keys in source files or commit them
+    to version control. If a key has ever been pasted into a chat, a
+    document, or a public repo, treat it as compromised and rotate it
+    immediately in the Anthropic Console.
 """
 
 import argparse
@@ -55,15 +55,12 @@ import json
 import os
 import re
 import sys
-import urllib.error
-import urllib.request
 
-from common import get_gemini_api_key
+import anthropic
 
-GEMINI_MODEL_DEFAULT = "gemini-2.5-flash"
-GEMINI_ENDPOINT_TEMPLATE = (
-    "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-)
+from common import get_anthropic_api_key
+
+CLAUDE_MODEL_DEFAULT = "claude-opus-5"
 
 SCHEMA_DESCRIPTION = """
 Extract information from the markdown company profile below and return ONLY
@@ -101,46 +98,22 @@ def read_markdown(path: str) -> str:
         return f.read()
 
 
-def call_gemini(markdown_text: str, api_key: str, model: str) -> dict:
-    url = GEMINI_ENDPOINT_TEMPLATE.format(model=model)
+def call_claude(markdown_text: str, api_key: str, model: str) -> dict:
     prompt = SCHEMA_DESCRIPTION + "\n\n--- MARKDOWN PROFILE START ---\n" + markdown_text + "\n--- MARKDOWN PROFILE END ---\n"
 
-    payload = {
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": prompt}],
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.1,
-            "responseMimeType": "application/json",
-        },
-    }
-
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "x-goog-api-key": api_key,
-        },
-        method="POST",
-    )
-
+    client = anthropic.Anthropic(api_key=api_key)
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Gemini API error {e.code}: {err_body}") from e
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"Could not reach Gemini API: {e}") from e
+        response = client.messages.create(
+            model=model,
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.APIError as e:
+        raise RuntimeError(f"Claude API error: {e}") from e
 
-    try:
-        text = body["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError) as e:
-        raise RuntimeError(f"Unexpected Gemini response shape: {json.dumps(body)[:500]}") from e
+    text = "".join(block.text for block in response.content if block.type == "text")
+    if not text:
+        raise RuntimeError("Claude returned an empty response.")
 
     # Strip accidental markdown fences, just in case.
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip())
@@ -148,7 +121,7 @@ def call_gemini(markdown_text: str, api_key: str, model: str) -> dict:
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"Could not parse JSON from Gemini output:\n{cleaned}") from e
+        raise RuntimeError(f"Could not parse JSON from Claude output:\n{cleaned}") from e
 
 
 def load_existing(out_path: str) -> dict:
@@ -167,9 +140,9 @@ def load_existing(out_path: str) -> dict:
 def company_md_to_details(
     markdown_path: str,
     api_key: str = None,
-    model: str = GEMINI_MODEL_DEFAULT,
+    model: str = CLAUDE_MODEL_DEFAULT,
 ) -> dict:
-    """Core library function: read one markdown profile, call Gemini, return
+    """Core library function: read one markdown profile, call Claude, return
     the extracted company record as a dict (does NOT write/append to any
     output file -- that's what `run()` does). Raises FileNotFoundError /
     RuntimeError on failure instead of calling sys.exit, so it's safe to
@@ -177,16 +150,16 @@ def company_md_to_details(
     if not os.path.exists(markdown_path):
         raise FileNotFoundError(f"markdown file not found: {markdown_path}")
 
-    api_key = api_key or get_gemini_api_key()
+    api_key = api_key or get_anthropic_api_key()
     markdown_text = read_markdown(markdown_path)
-    return call_gemini(markdown_text, api_key, model)
+    return call_claude(markdown_text, api_key, model)
 
 
 def run(
     markdown_paths,
     out_path: str = "company_details.json",
     api_key: str = None,
-    model: str = GEMINI_MODEL_DEFAULT,
+    model: str = CLAUDE_MODEL_DEFAULT,
 ) -> dict:
     """Library entry point mirroring the CLI: extract one or more markdown
     profiles and append each to out_path's {"companies": [...]} list,
@@ -197,11 +170,11 @@ def run(
     if isinstance(markdown_paths, (str, os.PathLike)):
         markdown_paths = [markdown_paths]
 
-    api_key = api_key or get_gemini_api_key()
+    api_key = api_key or get_anthropic_api_key()
     data = load_existing(out_path)
 
     for markdown_path in markdown_paths:
-        print(f"Sending {markdown_path} to Gemini ({model}) for extraction...")
+        print(f"Sending {markdown_path} to Claude ({model}) for extraction...")
         company_record = company_md_to_details(markdown_path, api_key=api_key, model=model)
         data["companies"].append(company_record)
 
@@ -213,14 +186,14 @@ def run(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Convert a company markdown profile into company_details.json format via Gemini.")
+    parser = argparse.ArgumentParser(description="Convert a company markdown profile into company_details.json format via Claude.")
     parser.add_argument("markdown_path", help="Path to the input markdown file (e.g. company.md)")
     parser.add_argument("--out", default="company_details.json", help="Output JSON file (default: company_details.json)")
-    parser.add_argument("--model", default=GEMINI_MODEL_DEFAULT, help=f"Gemini model to use (default: {GEMINI_MODEL_DEFAULT})")
+    parser.add_argument("--model", default=CLAUDE_MODEL_DEFAULT, help=f"Claude model to use (default: {CLAUDE_MODEL_DEFAULT})")
     args = parser.parse_args()
 
     try:
-        api_key = get_gemini_api_key()
+        api_key = get_anthropic_api_key()
     except RuntimeError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)

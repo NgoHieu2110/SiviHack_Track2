@@ -80,3 +80,20 @@
   }
 }
 
+@layer utilities {
+  /* Continuous vertical spin for the slot-machine reel while a new tender is
+     being fetched. The strip triples its items, so translating by -33.333%
+     loops seamlessly. */
+  @keyframes reel-spin {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-33.333%);
+    }
+  }
+  .animate-reel-spin {
+    animation: reel-spin 0.5s linear infinite;
+  }
+}
+

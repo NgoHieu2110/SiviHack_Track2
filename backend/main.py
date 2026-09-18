@@ -22,7 +22,7 @@ streams progress back to the browser as Server-Sent Events
        flat object -- see 1_company_md_to_company_details.py's schema for
        context). Submitting a new profile replaces whatever company was
        there before.
-    2. workflow_tools/2_company_details_to_initial_filter.py: ask Gemini to
+    2. workflow_tools/2_company_details_to_initial_filter.py: ask Claude to
        turn that profile into filters.yaml (CPV/NUTS prefixes, value range,
        exclusions, role hints).
     3. workflow_tools/3_run_filter_for_tenders.py: walk oeffentlichevergabe.de
@@ -30,7 +30,7 @@ streams progress back to the browser as Server-Sent Events
        PIPELINE_MAX_DAYS_BACK is hit. This also updates
        backend/tenders/index.json (priority bookkeeping -- see
        tender_index.py).
-    4. workflow_tools/7_select_from_raw_tenders.py: ask Gemini to pick and
+    4. workflow_tools/7_select_from_raw_tenders.py: ask Claude to pick and
        explain PIPELINE_SELECT_COUNT of the raw matched tenders in
        backend/tenders/ for this company profile, returning each one's
        full match record (including raw markdown) directly -- there is no
@@ -53,7 +53,7 @@ Each SSE event is one line of JSON after "data: ":
     {"type": "done", "matches": [...]}                         (one, on success)
     {"type": "error", "message": "..."}                        (one, on failure)
 
-This is a genuinely slow, external-API-bound operation (a Gemini call plus
+This is a genuinely slow, external-API-bound operation (a Claude call plus
 however many days of oeffentlichevergabe.de fetches it takes), which is why
 it streams progress rather than returning a single blocking JSON response.
 
@@ -67,12 +67,11 @@ POST /tenders/refine handles the "kept 2 of 3, dismissed 1" case: it
 computes a new per-criterion filter tolerance from that choice (see
 workflow_tools/8_change_filter_tolerance.py), dismisses the removed tender,
 rewrites filters.yaml, re-runs the fetch, and returns a single replacement
-tender. NOTE: as of this merge, the replacement-picking step inside
-8_change_filter_tolerance.py still calls the older
-workflow_tools/5_select_tenders.py (priority-based) rather than
-7_select_from_raw_tenders.py (AI-based) -- see that script's docstring for
-why, and update it once 7_select_from_raw_tenders.py's signature is
-available.
+tender. The replacement is picked the same AI-based way as /tenders/match
+(workflow_tools/7_select_from_raw_tenders.py's select_tenders_with_ai_from_raw,
+excluding the 2 kept tenders) so it's TenderMatch-shaped like every other
+tender the frontend already has, not the older workflow_tools/5_select_tenders.py's
+flat priority-only dict.
 """
 
 from __future__ import annotations
@@ -180,7 +179,7 @@ def load_module(name: str, path: Path):
     if not path.exists():
         raise FileNotFoundError(f"required workflow script not found: {path}")
     # 2_company_details_to_initial_filter.py does `from common import
-    # get_gemini_api_key`, a plain top-level import that only resolves if
+    # get_anthropic_api_key`, a plain top-level import that only resolves if
     # its own folder is on sys.path.
     workflow_dir = str(path.parent)
     if workflow_dir not in sys.path:
@@ -284,7 +283,7 @@ def format_sse(payload: dict) -> str:
 # left minimal here until that's redesigned; this just passes the raw
 # markdown through with a couple of cached display fields on top.
 # No LLM call here either way -- the tender already passed the
-# Gemini-generated filters.yaml block earlier in the pipeline.
+# Claude-generated filters.yaml block earlier in the pipeline.
 # ---------------------------------------------------------------------------
 
 def build_match(tender_dict: dict, profile: CompanyProfile) -> dict:
@@ -308,7 +307,7 @@ def build_match(tender_dict: dict, profile: CompanyProfile) -> dict:
 # ---------------------------------------------------------------------------
 
 def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> list[dict]:
-    q.put({"type": "progress", "stage": "selecting", "message": "Asking Gemini to pick and explain your top tenders..."})
+    q.put({"type": "progress", "stage": "selecting", "message": "Asking Claude to pick and explain your top tenders..."})
 
     run_stage(
         q, "saving_profile", "Saving your company profile...",
@@ -318,7 +317,7 @@ def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> list[dict]:
     run_stage(
         q, "building_filter",
         "Working out which tender categories and regions fit your company "
-        "(this calls Gemini and can take a moment)...",
+        "(this calls Claude and can take a moment)...",
         filter_module.run,
         input_path=str(COMPANY_DETAILS_PATH),
         out_path=str(FILTERS_PATH),

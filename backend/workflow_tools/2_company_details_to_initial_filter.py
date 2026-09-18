@@ -40,7 +40,7 @@ WHY THIS IS HARD TO DO DETERMINISTICALLY
 -----------------------------------------
 Two of the required fields, cpv_prefixes and nuts_prefixes, require domain
 judgment ("road construction, sewers" -> which CPV prefixes; "Bavaria, 150km
-from Augsburg" -> which NUTS prefixes), so this script asks Gemini to do
+from Augsburg" -> which NUTS prefixes), so this script asks Claude to do
 that mapping.
 
 TOLERANCE / SOFTNESS
@@ -73,12 +73,12 @@ can read back exactly what tolerance produced a given filter run.
 HOW EACH DIAL IS APPLIED
 --------------------------
 cpv_prefixes, nuts_prefixes, role_hint_reject, exclude_keywords are "is this
-code/phrase in or out" filters, so Gemini generates a LADDER: a concrete
+code/phrase in or out" filters, so Claude generates a LADDER: a concrete
 list at each of six tolerance steps (0.0, 0.2, 0.4, 0.6, 0.8, 1.0). The
 requested tolerance is snapped to the nearest step and that step's list is
 used as-is.
 
-value_min / value_max are continuous, so Gemini instead gives a "tight"
+value_min / value_max are continuous, so Claude instead gives a "tight"
 anchor (~tolerance 0.0, the company's real stated band) and a "loose" anchor
 (~tolerance 1.0, effectively unbounded), and this script linearly
 interpolates between them for the requested tolerance.
@@ -100,14 +100,14 @@ and role_hint_reject are never softened by this; they stay a hard reject.
 
 CACHING
 --------
-Gemini is called once; the raw ladder/anchor response is cached to
+Claude is called once; the raw ladder/anchor response is cached to
 --cache-path (default: .filter_ladders_cache.json, next to --out) keyed by
 company name. Re-running with different tolerance values re-uses the cache
 and needs no further API calls. Pass --refresh to force a new call (e.g.
 after company_details.json content changes).
 
 Usage:
-    export GEMINI_API_KEY="your-key-here"   # or set it in backend/.env
+    export ANTHROPIC_API_KEY="your-key-here"   # or set it in backend/.env
     python 2_company_details_to_initial_filter.py \
         --input company_details.json --out filters.yaml \
         --tolerance 0.3 --tolerance-exclude 0.0 --tolerance-role-hint 0.7
@@ -124,15 +124,12 @@ import json
 import os
 import re
 import sys
-import urllib.error
-import urllib.request
 
-from common import get_gemini_api_key
+import anthropic
 
-GEMINI_MODEL_DEFAULT = "gemini-3.6-flash"
-GEMINI_ENDPOINT_TEMPLATE = (
-    "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-)
+from common import get_anthropic_api_key
+
+CLAUDE_MODEL_DEFAULT = "claude-opus-5"
 
 TOLERANCE_STEPS = ["0.0", "0.2", "0.4", "0.6", "0.8", "1.0"]
 
@@ -247,36 +244,26 @@ Return raw JSON only.
 """
 
 
-def call_gemini(prompt: str, api_key: str, model: str) -> dict:
-    url = GEMINI_ENDPOINT_TEMPLATE.format(model=model)
-    payload = {
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"},
-    }
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
-        method="POST",
-    )
+def call_claude(prompt: str, api_key: str, model: str) -> dict:
+    client = anthropic.Anthropic(api_key=api_key)
     try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"Gemini API error {e.code}: {e.read().decode('utf-8', errors='replace')}") from e
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"Could not reach Gemini API: {e}") from e
+        response = client.messages.create(
+            model=model,
+            max_tokens=8192,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.APIError as e:
+        raise RuntimeError(f"Claude API error: {e}") from e
 
-    try:
-        text = body["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError) as e:
-        raise RuntimeError(f"Unexpected Gemini response shape: {json.dumps(body)[:500]}") from e
+    text = "".join(block.text for block in response.content if block.type == "text")
+    if not text:
+        raise RuntimeError("Claude returned an empty response.")
 
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip())
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"Could not parse JSON from Gemini output:\n{cleaned}") from e
+        raise RuntimeError(f"Could not parse JSON from Claude output:\n{cleaned}") from e
 
 
 def build_prompt(company: dict) -> str:
@@ -294,7 +281,7 @@ def build_prompt(company: dict) -> str:
 
 
 def compute_cache_key(company: dict) -> str:
-    """Cache key derived from the exact fields fed into the Gemini prompt
+    """Cache key derived from the exact fields fed into the Claude prompt
     (see build_prompt()) -- NOT from company.get('name').
 
     Bug this fixes: company_details.json doesn't always carry a 'name'
@@ -307,7 +294,7 @@ def compute_cache_key(company: dict) -> str:
     two different profiles can never collide, regardless of what 'name'
     is or isn't set to, and the SAME profile re-run still hits the cache
     (same fields -> same hash) so tolerance-only re-runs still cost zero
-    extra Gemini calls.
+    extra Claude calls.
     """
     fields = {
         "name": company.get("name", ""),
@@ -341,7 +328,7 @@ def save_cache(cache_path: str, cache: dict):
 def validate_ladder(ladder: dict, name: str, allow_empty_at_1_0_only: bool):
     for step in TOLERANCE_STEPS:
         if step not in ladder:
-            raise RuntimeError(f"{name}: missing tolerance step '{step}' in Gemini response")
+            raise RuntimeError(f"{name}: missing tolerance step '{step}' in Claude response")
         if step != "1.0" and allow_empty_at_1_0_only and not ladder[step]:
             raise RuntimeError(f"{name}: tolerance step '{step}' is empty (only 1.0 may be empty)")
 
@@ -595,7 +582,7 @@ def build_filters_yaml(
     company: dict,
     tol_defaults: dict,
     api_key: str,
-    model: str = GEMINI_MODEL_DEFAULT,
+    model: str = CLAUDE_MODEL_DEFAULT,
     cache_path: str = ".filter_ladders_cache.json",
     refresh: bool = False,
     match_mode: str = "auto",
@@ -603,7 +590,7 @@ def build_filters_yaml(
 ) -> str:
     """Core library function: given the already-loaded company dict (the
     single object from company_details.json) and resolved tolerances, call
-    Gemini (with caching) as needed and return the full rendered
+    Claude (with caching) as needed and return the full rendered
     filters.yaml text. Does not touch --input/--out paths itself."""
     cache = {} if refresh else load_cache(cache_path)
 
@@ -614,9 +601,9 @@ def build_filters_yaml(
         print(f"{name}: using cached ladder ({cache_path}, key {cache_key})")
         ladders = cache[cache_key]
     else:
-        print(f"{name}: calling Gemini ({model}) to build filter ladder (cache key {cache_key})...")
+        print(f"{name}: calling Claude ({model}) to build filter ladder (cache key {cache_key})...")
         prompt = build_prompt(company)
-        ladders = call_gemini(prompt, api_key, model)
+        ladders = call_claude(prompt, api_key, model)
         cache[cache_key] = ladders
         save_cache(cache_path, cache)
 
@@ -634,7 +621,7 @@ def build_filters_yaml(
 def run(
     input_path: str = "company_details.json",
     out_path: str = "filters.yaml",
-    model: str = GEMINI_MODEL_DEFAULT,
+    model: str = CLAUDE_MODEL_DEFAULT,
     cache_path: str = None,
     refresh: bool = False,
     tolerance: float = 0.5,
@@ -649,7 +636,7 @@ def run(
 ) -> str:
     """Library entry point mirroring the CLI end to end: load
     company_details.json (a single flat company object), resolve
-    tolerances, call Gemini (cached), write filters.yaml, and return its
+    tolerances, call Claude (cached), write filters.yaml, and return its
     text.
 
     match_mode / min_criteria_matched control how the written filters.yaml
@@ -657,7 +644,7 @@ def run(
     "auto" (default) derives it from how loose the tolerance dials already
     are; "all" or "any" force it explicitly.
     """
-    api_key = api_key or get_gemini_api_key()
+    api_key = api_key or get_anthropic_api_key()
 
     tol_defaults = resolve_tolerances(
         tolerance, tolerance_cpv, tolerance_nuts, tolerance_value,
@@ -689,17 +676,17 @@ def run(
         f.write(output)
 
     print(f"\nWrote {out_path} for '{company.get('name', 'company')}'.")
-    print(f"Ladder cache: {resolved_cache_path} (re-run with different --tolerance-* flags without re-calling Gemini)")
+    print(f"Ladder cache: {resolved_cache_path} (re-run with different --tolerance-* flags without re-calling Claude)")
     return output
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Convert company_details.json into filters.yaml via Gemini, with a per-criterion tolerance dial.")
+    parser = argparse.ArgumentParser(description="Convert company_details.json into filters.yaml via Claude, with a per-criterion tolerance dial.")
     parser.add_argument("--input", default="company_details.json", help="Path to company_details.json (default: company_details.json)")
     parser.add_argument("--out", default="filters.yaml", help="Output filters.yaml path (default: filters.yaml)")
-    parser.add_argument("--model", default=GEMINI_MODEL_DEFAULT, help=f"Gemini model (default: {GEMINI_MODEL_DEFAULT})")
-    parser.add_argument("--cache-path", default=None, help="Cache file for the raw Gemini ladder (default: .filter_ladders_cache.json next to --out)")
-    parser.add_argument("--refresh", action="store_true", help="Ignore cache and re-call Gemini")
+    parser.add_argument("--model", default=CLAUDE_MODEL_DEFAULT, help=f"Claude model (default: {CLAUDE_MODEL_DEFAULT})")
+    parser.add_argument("--cache-path", default=None, help="Cache file for the raw Claude ladder (default: .filter_ladders_cache.json next to --out)")
+    parser.add_argument("--refresh", action="store_true", help="Ignore cache and re-call Claude")
 
     parser.add_argument("--tolerance", type=float, default=0.5, help="Global default tolerance in [0,1] for any dial not set explicitly (default: 0.5)")
     parser.add_argument("--tolerance-cpv", type=float, default=None)
@@ -722,7 +709,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        api_key = get_gemini_api_key()
+        api_key = get_anthropic_api_key()
     except RuntimeError as e:
         sys.exit(f"ERROR: {e}")
 

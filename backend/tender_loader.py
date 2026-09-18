@@ -24,7 +24,7 @@ EXPECTED FILE FORMAT (YAML frontmatter + markdown body):
     startDate: "2027-01-15"
     ---
     Free-text description of the project goes here. This becomes the
-    `description` field and is also given to Gemini as extra context.
+    `description` field and is also given to Claude as extra context.
 
 If your real .md files use a different structure, tell me and I'll adjust
 this parser to match exactly — this is a reasonable default in the
@@ -54,7 +54,7 @@ class LoadedTender:
     filename: str
     mtime: float
     tender: Tender
-    raw_markdown: str  # full original file content, given to Gemini as-is
+    raw_markdown: str  # full original file content, given to Claude as-is
 
 
 def _parse_md_file(path: str, filename: str) -> LoadedTender:

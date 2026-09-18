@@ -6,8 +6,8 @@ Small shared helpers used by the numbered workflow_tools scripts
 3_run_filter_for_tenders.py, 4_standardize_tenders.py) now that they're
 importable modules as well as CLI scripts.
 
-Currently just: loading GEMINI_API_KEY from backend/.env (falling back to an
-already-exported environment variable, e.g. in CI), without requiring the
+Currently just: loading ANTHROPIC_API_KEY from backend/.env (falling back to
+an already-exported environment variable, e.g. in CI), without requiring the
 python-dotenv package.
 """
 
@@ -58,21 +58,21 @@ def load_env_file(env_path: Path = DEFAULT_ENV_PATH) -> None:
                 os.environ[key] = value
 
 
-def get_gemini_api_key(env_path: Path = DEFAULT_ENV_PATH) -> str:
-    """Return GEMINI_API_KEY, loading backend/.env first if needed.
+def get_anthropic_api_key(env_path: Path = DEFAULT_ENV_PATH) -> str:
+    """Return ANTHROPIC_API_KEY, loading backend/.env first if needed.
 
     Raises RuntimeError with a clear message if the key still isn't set
     afterward (caller decides whether that's a sys.exit in CLI mode or an
     exception to propagate when used as a library).
     """
-    if not os.environ.get("GEMINI_API_KEY"):
+    if not os.environ.get("ANTHROPIC_API_KEY"):
         load_env_file(env_path)
 
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         raise RuntimeError(
-            "GEMINI_API_KEY not found. Set it in "
-            f"{env_path} (GEMINI_API_KEY=your-key-here) or export it as an "
-            "environment variable before running."
+            "ANTHROPIC_API_KEY not found. Set it in "
+            f"{env_path} (ANTHROPIC_API_KEY=your-key-here) or export it as "
+            "an environment variable before running."
         )
     return api_key

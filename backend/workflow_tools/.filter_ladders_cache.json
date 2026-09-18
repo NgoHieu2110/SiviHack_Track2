@@ -258,5 +258,1791 @@
     "value_max_tight": 783834,
     "value_max_loose": 7838340,
     "notes": "Filter for an electrical installation contractor operating across Northern Germany (HB, HH, MV, NI, SH) with projects up to ~784k EUR."
+  },
+  "eb0534f0a65b8efa": {
+    "cpv_ladder": {
+      "0.0": [
+        {
+          "code": "45310000",
+          "label": "Electrical installation work"
+        },
+        {
+          "code": "45311000",
+          "label": "Electrical wiring and fitting work"
+        },
+        {
+          "code": "45315000",
+          "label": "Electrical installation of heating and other building electric equipment"
+        },
+        {
+          "code": "45316000",
+          "label": "Installation of lighting and signalling systems"
+        },
+        {
+          "code": "45317000",
+          "label": "Other electrical installation work"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "45310",
+          "label": "Electrical installation work (broadened)"
+        },
+        {
+          "code": "45312",
+          "label": "Alarm, fire-alarm and lightning-protection systems"
+        },
+        {
+          "code": "45314",
+          "label": "Installation of telecommunications equipment"
+        },
+        {
+          "code": "31600000",
+          "label": "Electrical equipment and apparatus"
+        },
+        {
+          "code": "31500000",
+          "label": "Lighting equipment and electric lamps"
+        },
+        {
+          "code": "09310000",
+          "label": "Electricity"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "4531",
+          "label": "Electrical installation and wiring"
+        },
+        {
+          "code": "45300000",
+          "label": "Building installation work"
+        },
+        {
+          "code": "45330000",
+          "label": "Plumbing and sanitary/HVAC installation work"
+        },
+        {
+          "code": "45350000",
+          "label": "Mechanical installations"
+        },
+        {
+          "code": "316",
+          "label": "Electrical equipment and apparatus"
+        },
+        {
+          "code": "315",
+          "label": "Lighting equipment"
+        },
+        {
+          "code": "323",
+          "label": "Television, radio, audio and video apparatus"
+        },
+        {
+          "code": "50532000",
+          "label": "Repair/maintenance of electrical machinery and equipment"
+        },
+        {
+          "code": "71314100",
+          "label": "Electrical engineering services"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "453",
+          "label": "Building installation work (all trades)"
+        },
+        {
+          "code": "452",
+          "label": "Works for complete/part construction and civil engineering"
+        },
+        {
+          "code": "451",
+          "label": "Site preparation work"
+        },
+        {
+          "code": "313",
+          "label": "Electric motors, generators and transformers"
+        },
+        {
+          "code": "312",
+          "label": "Electricity distribution and control apparatus"
+        },
+        {
+          "code": "31",
+          "label": "Electrical machinery, apparatus, equipment and consumables"
+        },
+        {
+          "code": "713",
+          "label": "Engineering services"
+        },
+        {
+          "code": "505",
+          "label": "Repair and maintenance services of electrical/mechanical equipment"
+        },
+        {
+          "code": "48",
+          "label": "Software and information systems"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "45",
+          "label": "Construction work"
+        },
+        {
+          "code": "31",
+          "label": "Electrical machinery and equipment"
+        },
+        {
+          "code": "32",
+          "label": "Radio, television, communication and telecom equipment"
+        },
+        {
+          "code": "71",
+          "label": "Architectural, construction, engineering and inspection services"
+        },
+        {
+          "code": "50",
+          "label": "Repair and maintenance services"
+        },
+        {
+          "code": "51",
+          "label": "Installation services (other than software)"
+        },
+        {
+          "code": "09",
+          "label": "Petroleum products, fuel, electricity and other sources of energy"
+        },
+        {
+          "code": "34",
+          "label": "Transport equipment (incl. signalling/e-mobility)"
+        }
+      ],
+      "1.0": []
+    },
+    "nuts_ladder": {
+      "0.0": [
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        },
+        {
+          "code": "DEA",
+          "label": "Nordrhein-Westfalen"
+        },
+        {
+          "code": "DEE",
+          "label": "Sachsen-Anhalt"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "DE",
+          "label": "Germany (nationwide)"
+        }
+      ],
+      "1.0": []
+    },
+    "exclude_keywords_ladder": {
+      "0.0": [
+        "Abbrucharbeiden",
+        "Abbruch",
+        "Dachdeckerarbeiten",
+        "Straßenbau",
+        "Tiefbau",
+        "Kanalbau",
+        "Gerüstbau",
+        "Garten- und Landschaftsbau",
+        "Reinigungsdienstleistungen",
+        "Hochspannungsfreileitung",
+        "Gleisbau",
+        "Asbestsanierung",
+        "Malerarbeiten",
+        "Estricharbeiten"
+      ],
+      "0.2": [
+        "Abbruch",
+        "Dachdeckerarbeiten",
+        "Straßenbau",
+        "Tiefbau",
+        "Kanalbau",
+        "Gerüstbau",
+        "Garten- und Landschaftsbau",
+        "Reinigungsdienstleistungen",
+        "Hochspannungsfreileitung",
+        "Gleisbau"
+      ],
+      "0.4": [
+        "Abbruch",
+        "Straßenbau",
+        "Tiefbau",
+        "Gerüstbau",
+        "Reinigungsdienstleistungen",
+        "Gleisbau"
+      ],
+      "0.6": [
+        "Abbruch",
+        "Straßenbau",
+        "Reinigungsdienstleistungen"
+      ],
+      "0.8": [
+        "Reinigungsdienstleistungen"
+      ],
+      "1.0": []
+    },
+    "role_hint_ladder": {
+      "0.0": [
+        "Elektroinstallation",
+        "Elektroinstallationsarbeiten",
+        "Elektroarbeiten",
+        "Elektrotechnik",
+        "Fachlos Elektro",
+        "Starkstromanlagen",
+        "Niederspannungsanlagen",
+        "Beleuchtungsanlagen"
+      ],
+      "0.2": [
+        "Elektroinstallation",
+        "Elektroarbeiten",
+        "Elektrotechnik",
+        "Fachlos Elektro",
+        "Starkstromanlagen",
+        "Beleuchtungsanlagen"
+      ],
+      "0.4": [
+        "Elektroinstallation",
+        "Elektroarbeiten",
+        "Elektrotechnik",
+        "Beleuchtung"
+      ],
+      "0.6": [
+        "Elektro",
+        "Elektrotechnik"
+      ],
+      "0.8": [
+        "Elektro"
+      ],
+      "1.0": []
+    },
+    "value_min_tight": 0,
+    "value_min_loose": 0,
+    "value_max_tight": 872378,
+    "value_max_loose": 17447560,
+    "notes": "Electrical installation contractor operating in northern Germany (Hamburg, Schleswig-Holstein, Lower Saxony, Bremen, extending to Mecklenburg-Vorpommern). Core fit is CPV 4531x electrical installation work with contract values up to roughly EUR 872,000; no explicit exclusions were stated, so the exclude/role-hint keyword lists are plausible defaults for an electrical trade lot."
+  },
+  "054c7fe05990820b": {
+    "cpv_ladder": {
+      "0.0": [
+        {
+          "code": "45261210",
+          "label": "Roof-covering work (Dachdeckungsarbeiten)"
+        },
+        {
+          "code": "45261300",
+          "label": "Flashing and gutter work"
+        },
+        {
+          "code": "45261420",
+          "label": "Waterproofing / roof sealing work"
+        },
+        {
+          "code": "45261900",
+          "label": "Roof repair and maintenance"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "45261",
+          "label": "Roof erection, covering and related works"
+        },
+        {
+          "code": "45261100",
+          "label": "Roof framework / carpentry work"
+        },
+        {
+          "code": "45261400",
+          "label": "Sheeting work"
+        },
+        {
+          "code": "45261910",
+          "label": "Roof repair"
+        },
+        {
+          "code": "45261920",
+          "label": "Roof maintenance"
+        },
+        {
+          "code": "44112400",
+          "label": "Roof and roofing components"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "45261",
+          "label": "Roof works"
+        },
+        {
+          "code": "45262",
+          "label": "Special trade construction works"
+        },
+        {
+          "code": "45320000",
+          "label": "Insulation work"
+        },
+        {
+          "code": "45261000",
+          "label": "Erection and related works of roof frames and coverings"
+        },
+        {
+          "code": "45443000",
+          "label": "Facade work"
+        },
+        {
+          "code": "44112400",
+          "label": "Roofing materials"
+        },
+        {
+          "code": "44210000",
+          "label": "Structures and parts of structures (metal)"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "4526",
+          "label": "Roofing and other special trade construction"
+        },
+        {
+          "code": "4532",
+          "label": "Insulation and weatherproofing work"
+        },
+        {
+          "code": "4544",
+          "label": "Painting, glazing and facade work"
+        },
+        {
+          "code": "4542",
+          "label": "Installation of joinery, doors, windows, rooflights"
+        },
+        {
+          "code": "45453",
+          "label": "Overhaul and refurbishment work"
+        },
+        {
+          "code": "45111",
+          "label": "Demolition, site preparation and clearance"
+        },
+        {
+          "code": "45261",
+          "label": "Roof works"
+        },
+        {
+          "code": "09331",
+          "label": "Solar panels / roof-mounted PV"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "4526",
+          "label": "Special trade construction works"
+        },
+        {
+          "code": "4521",
+          "label": "Building construction work"
+        },
+        {
+          "code": "4545",
+          "label": "Other building completion work"
+        },
+        {
+          "code": "4544",
+          "label": "Painting, glazing and facade work"
+        },
+        {
+          "code": "4532",
+          "label": "Insulation work"
+        },
+        {
+          "code": "4511",
+          "label": "Demolition and site preparation"
+        },
+        {
+          "code": "44",
+          "label": "Construction structures, materials and products"
+        },
+        {
+          "code": "5026",
+          "label": "Repair and maintenance of building structures"
+        },
+        {
+          "code": "71",
+          "label": "Architectural, engineering and inspection services"
+        }
+      ],
+      "1.0": []
+    },
+    "nuts_ladder": {
+      "0.0": [
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        },
+        {
+          "code": "DEE",
+          "label": "Sachsen-Anhalt"
+        },
+        {
+          "code": "DEA",
+          "label": "Nordrhein-Westfalen"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "DE",
+          "label": "Germany (all regions)"
+        }
+      ],
+      "1.0": []
+    },
+    "exclude_keywords_ladder": {
+      "0.0": [
+        "Generalunternehmer",
+        "Totalunternehmer",
+        "Tiefbau",
+        "Strassenbau",
+        "Brueckenbau",
+        "Kanalbau",
+        "Gleisbau",
+        "Erdarbeiten",
+        "Heizungsbau",
+        "Elektroinstallation",
+        "Sanitaerinstallation",
+        "Planungsleistungen",
+        "Ingenieurleistungen",
+        "Freiflaechen-Photovoltaik",
+        "Rahmenvereinbarung mehrjaehrig",
+        "Schluesselfertig"
+      ],
+      "0.2": [
+        "Generalunternehmer",
+        "Totalunternehmer",
+        "Tiefbau",
+        "Strassenbau",
+        "Brueckenbau",
+        "Kanalbau",
+        "Gleisbau",
+        "Heizungsbau",
+        "Elektroinstallation",
+        "Planungsleistungen",
+        "Ingenieurleistungen",
+        "Schluesselfertig"
+      ],
+      "0.4": [
+        "Generalunternehmer",
+        "Totalunternehmer",
+        "Tiefbau",
+        "Strassenbau",
+        "Brueckenbau",
+        "Gleisbau",
+        "Planungsleistungen",
+        "Schluesselfertig"
+      ],
+      "0.6": [
+        "Generalunternehmer",
+        "Totalunternehmer",
+        "Strassenbau",
+        "Gleisbau"
+      ],
+      "0.8": [
+        "Generalunternehmer"
+      ],
+      "1.0": []
+    },
+    "role_hint_ladder": {
+      "0.0": [
+        "Dachdeckerarbeiten",
+        "Dachdeckungsarbeiten",
+        "Dachabdichtung",
+        "Dachsanierung",
+        "Bedachungsarbeiten",
+        "Flachdach",
+        "Steildach",
+        "Klempnerarbeiten",
+        "Dachbegruenung",
+        "Dachrinne"
+      ],
+      "0.2": [
+        "Dachdeckerarbeiten",
+        "Dachdeckungsarbeiten",
+        "Dachabdichtung",
+        "Dachsanierung",
+        "Bedachungsarbeiten",
+        "Flachdach",
+        "Steildach",
+        "Klempnerarbeiten"
+      ],
+      "0.4": [
+        "Dachdeckerarbeiten",
+        "Dachabdichtung",
+        "Dachsanierung",
+        "Flachdach",
+        "Dach"
+      ],
+      "0.6": [
+        "Dachdecker",
+        "Dach",
+        "Abdichtung"
+      ],
+      "0.8": [
+        "Dach"
+      ],
+      "1.0": []
+    },
+    "value_min_tight": 0,
+    "value_min_loose": 0,
+    "value_max_tight": 39349,
+    "value_max_loose": 1500000,
+    "notes": "Small roofing contractor operating in northern Germany (Hamburg, Schleswig-Holstein, Niedersachsen, Bremen, plus Mecklenburg-Vorpommern when loosened). Core fit is roof-covering, sealing, gutter and roof repair work up to roughly EUR 39k; larger, general-contractor or civil-engineering packages are out of scope unless loosened."
+  },
+  "71df7ea01107fc05": {
+    "cpv_ladder": {
+      "0.0": [
+        {
+          "code": "45210000",
+          "label": "Building construction work"
+        },
+        {
+          "code": "45211000",
+          "label": "Construction of multi-dwelling and individual houses"
+        },
+        {
+          "code": "45213000",
+          "label": "Construction of commercial/industrial buildings"
+        },
+        {
+          "code": "45214000",
+          "label": "Construction of education and research buildings"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "45210000",
+          "label": "Building construction work"
+        },
+        {
+          "code": "45215000",
+          "label": "Construction of health and social services buildings"
+        },
+        {
+          "code": "45216000",
+          "label": "Construction of public order/emergency buildings"
+        },
+        {
+          "code": "45212000",
+          "label": "Construction of recreation, sports, culture buildings"
+        },
+        {
+          "code": "45262000",
+          "label": "Special trade construction works (structural)"
+        },
+        {
+          "code": "45453000",
+          "label": "Overhaul and refurbishment work"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "4521",
+          "label": "Building construction (all types)"
+        },
+        {
+          "code": "4526",
+          "label": "Roof and special trade construction works"
+        },
+        {
+          "code": "4545",
+          "label": "Other building completion / refurbishment work"
+        },
+        {
+          "code": "4544",
+          "label": "Painting and glazing work"
+        },
+        {
+          "code": "4542",
+          "label": "Joinery and carpentry installation"
+        },
+        {
+          "code": "4541",
+          "label": "Plastering work"
+        },
+        {
+          "code": "4543",
+          "label": "Floor and wall covering work"
+        },
+        {
+          "code": "5070",
+          "label": "Repair and maintenance of building installations"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "452",
+          "label": "Works for complete or part construction and civil engineering"
+        },
+        {
+          "code": "454",
+          "label": "Building completion work"
+        },
+        {
+          "code": "453",
+          "label": "Building installation work (HVAC, electrical, plumbing)"
+        },
+        {
+          "code": "451",
+          "label": "Site preparation and demolition work"
+        },
+        {
+          "code": "507",
+          "label": "Repair and maintenance of building installations"
+        },
+        {
+          "code": "712",
+          "label": "Architectural and related services"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "45",
+          "label": "Construction work"
+        },
+        {
+          "code": "50",
+          "label": "Repair and maintenance services"
+        },
+        {
+          "code": "71",
+          "label": "Architectural, construction, engineering and inspection services"
+        },
+        {
+          "code": "44",
+          "label": "Construction structures, materials and products"
+        },
+        {
+          "code": "90",
+          "label": "Sewage, refuse, cleaning and environmental services"
+        }
+      ],
+      "1.0": []
+    },
+    "nuts_ladder": {
+      "0.0": [
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg (adjacent north-east)"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        },
+        {
+          "code": "DEE",
+          "label": "Sachsen-Anhalt"
+        },
+        {
+          "code": "DEA",
+          "label": "Nordrhein-Westfalen"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        },
+        {
+          "code": "DEE",
+          "label": "Sachsen-Anhalt"
+        },
+        {
+          "code": "DEA",
+          "label": "Nordrhein-Westfalen"
+        },
+        {
+          "code": "DE7",
+          "label": "Hessen"
+        },
+        {
+          "code": "DED",
+          "label": "Sachsen"
+        },
+        {
+          "code": "DEG",
+          "label": "Thueringen"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "DE",
+          "label": "Germany (nationwide)"
+        }
+      ],
+      "1.0": []
+    },
+    "exclude_keywords_ladder": {
+      "0.0": [
+        "Straßenbau",
+        "Gleisbau",
+        "Brückenbau",
+        "Tunnelbau",
+        "Kanalbau",
+        "Wasserbau",
+        "Hafenbau",
+        "Windkraftanlage",
+        "Kraftwerk",
+        "Kampfmittelbeseitigung",
+        "Asbestsanierung",
+        "Lieferung von Möbeln",
+        "IT-Dienstleistungen",
+        "Softwareentwicklung",
+        "Reinigungsdienstleistungen",
+        "Winterdienst",
+        "Sicherheitsdienst",
+        "Personalvermittlung"
+      ],
+      "0.2": [
+        "Straßenbau",
+        "Gleisbau",
+        "Brückenbau",
+        "Tunnelbau",
+        "Wasserbau",
+        "Hafenbau",
+        "Windkraftanlage",
+        "Kraftwerk",
+        "Kampfmittelbeseitigung",
+        "Asbestsanierung",
+        "IT-Dienstleistungen",
+        "Softwareentwicklung",
+        "Reinigungsdienstleistungen",
+        "Sicherheitsdienst"
+      ],
+      "0.4": [
+        "Gleisbau",
+        "Tunnelbau",
+        "Wasserbau",
+        "Windkraftanlage",
+        "Kraftwerk",
+        "Kampfmittelbeseitigung",
+        "IT-Dienstleistungen",
+        "Softwareentwicklung"
+      ],
+      "0.6": [
+        "Tunnelbau",
+        "Kampfmittelbeseitigung",
+        "Windkraftanlage",
+        "Softwareentwicklung"
+      ],
+      "0.8": [
+        "Kampfmittelbeseitigung"
+      ],
+      "1.0": []
+    },
+    "role_hint_ladder": {
+      "0.0": [
+        "Hochbau",
+        "Gebäudeerrichtung",
+        "Neubau Gebäude",
+        "Umbau",
+        "Sanierung",
+        "Instandhaltung",
+        "Wartung",
+        "Rahmenvertrag Instandhaltung 2 Jahre",
+        "Bauleistung Hochbau",
+        "Generalunternehmer Hochbau"
+      ],
+      "0.2": [
+        "Hochbau",
+        "Gebäudeerrichtung",
+        "Neubau Gebäude",
+        "Umbau",
+        "Sanierung",
+        "Instandhaltung",
+        "Wartung",
+        "Bauleistung Hochbau",
+        "Generalunternehmer"
+      ],
+      "0.4": [
+        "Hochbau",
+        "Neubau",
+        "Sanierung",
+        "Instandhaltung",
+        "Wartung",
+        "Bauleistung"
+      ],
+      "0.6": [
+        "Hochbau",
+        "Bauleistung",
+        "Instandhaltung"
+      ],
+      "0.8": [
+        "Bauleistung"
+      ],
+      "1.0": []
+    },
+    "value_min_tight": 839,
+    "value_min_loose": 0,
+    "value_max_tight": 784388,
+    "value_max_loose": 15000000,
+    "notes": "Small building-construction (Hochbau) contractor operating in the North German region (Schleswig-Holstein, Hamburg, Niedersachsen, Bremen, Mecklenburg-Vorpommern), handling contracts from roughly EUR 800 up to about EUR 785k. Comfortable with new build, refurbishment and 2-year maintenance/servicing frameworks; not a civil-engineering, road or specialist-infrastructure contractor."
+  },
+  "f7f438c25cf55b0a": {
+    "cpv_ladder": {
+      "0.0": [
+        {
+          "code": "45210000",
+          "label": "Building construction work"
+        },
+        {
+          "code": "45211000",
+          "label": "Construction of multi-dwelling buildings and individual houses"
+        },
+        {
+          "code": "45214000",
+          "label": "Construction of education and research buildings"
+        },
+        {
+          "code": "45215000",
+          "label": "Construction of health and social services buildings"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "45210000",
+          "label": "Building construction work"
+        },
+        {
+          "code": "45212000",
+          "label": "Construction of leisure, sports, culture and hotel buildings"
+        },
+        {
+          "code": "45213000",
+          "label": "Construction of commercial, warehouse and industrial buildings"
+        },
+        {
+          "code": "45216000",
+          "label": "Construction of law and order / emergency service buildings"
+        },
+        {
+          "code": "45220000",
+          "label": "Engineering works and construction works"
+        },
+        {
+          "code": "45261000",
+          "label": "Roofing and roof covering works"
+        },
+        {
+          "code": "45262000",
+          "label": "Special trade construction works"
+        },
+        {
+          "code": "45400000",
+          "label": "Building completion work"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "4521",
+          "label": "Building construction"
+        },
+        {
+          "code": "4522",
+          "label": "Engineering works / structural works"
+        },
+        {
+          "code": "4526",
+          "label": "Roof and special trade works"
+        },
+        {
+          "code": "4527",
+          "label": "Plumbing, HVAC and sanitary installation"
+        },
+        {
+          "code": "4531",
+          "label": "Electrical installation work"
+        },
+        {
+          "code": "4540",
+          "label": "Building completion work"
+        },
+        {
+          "code": "4511",
+          "label": "Demolition and site preparation"
+        },
+        {
+          "code": "4523",
+          "label": "Roads, pipelines, foundation works"
+        },
+        {
+          "code": "7122",
+          "label": "Architectural and related services"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "452",
+          "label": "Works for complete or part construction"
+        },
+        {
+          "code": "453",
+          "label": "Building installation work"
+        },
+        {
+          "code": "454",
+          "label": "Building completion work"
+        },
+        {
+          "code": "451",
+          "label": "Site preparation work"
+        },
+        {
+          "code": "455",
+          "label": "Construction plant hire with operator"
+        },
+        {
+          "code": "712",
+          "label": "Architectural, engineering and planning services"
+        },
+        {
+          "code": "713",
+          "label": "Technical testing, analysis and consultancy"
+        },
+        {
+          "code": "504",
+          "label": "Repair and maintenance of building installations"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "45",
+          "label": "Construction work (all)"
+        },
+        {
+          "code": "71",
+          "label": "Architectural, construction, engineering and inspection services"
+        },
+        {
+          "code": "50",
+          "label": "Repair and maintenance services"
+        },
+        {
+          "code": "44",
+          "label": "Construction structures, materials and products"
+        },
+        {
+          "code": "90",
+          "label": "Environmental / remediation and cleaning services"
+        },
+        {
+          "code": "79",
+          "label": "Business and management support services"
+        }
+      ],
+      "1.0": []
+    },
+    "nuts_ladder": {
+      "0.0": [
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DEE",
+          "label": "Sachsen-Anhalt"
+        },
+        {
+          "code": "DED",
+          "label": "Sachsen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DEE",
+          "label": "Sachsen-Anhalt"
+        },
+        {
+          "code": "DED",
+          "label": "Sachsen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DEG",
+          "label": "Thueringen"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "DE",
+          "label": "Germany (nationwide)"
+        }
+      ],
+      "1.0": []
+    },
+    "exclude_keywords_ladder": {
+      "0.0": [
+        "offshore",
+        "offshore-windpark",
+        "offshore wind",
+        "hochsee",
+        "seekabel",
+        "meeresboden",
+        "plattform auf see",
+        "schiff",
+        "hafenbecken unterwasser",
+        "taucherarbeiten",
+        "unterwasserarbeiten"
+      ],
+      "0.2": [
+        "offshore",
+        "offshore-windpark",
+        "offshore wind",
+        "hochsee",
+        "seekabel",
+        "meeresboden",
+        "taucherarbeiten",
+        "unterwasserarbeiten"
+      ],
+      "0.4": [
+        "offshore",
+        "offshore-windpark",
+        "offshore wind",
+        "hochsee",
+        "unterwasserarbeiten"
+      ],
+      "0.6": [
+        "offshore",
+        "offshore wind",
+        "hochsee"
+      ],
+      "0.8": [
+        "offshore"
+      ],
+      "1.0": []
+    },
+    "role_hint_ladder": {
+      "0.0": [
+        "hochbau",
+        "gebäudeerrichtung",
+        "neubau gebäude",
+        "rohbauarbeiten",
+        "bauhauptgewerbe",
+        "generalunternehmer hochbau"
+      ],
+      "0.2": [
+        "hochbau",
+        "neubau gebäude",
+        "rohbauarbeiten",
+        "bauhauptgewerbe",
+        "umbau",
+        "sanierung gebäude"
+      ],
+      "0.4": [
+        "hochbau",
+        "neubau",
+        "sanierung",
+        "umbau",
+        "bauarbeiten"
+      ],
+      "0.6": [
+        "hochbau",
+        "bauarbeiten"
+      ],
+      "0.8": [
+        "bauarbeiten"
+      ],
+      "1.0": []
+    },
+    "value_min_tight": 4893,
+    "value_min_loose": 0,
+    "value_max_tight": 98329844,
+    "value_max_loose": 2000000000,
+    "notes": "Building construction (Hochbau) contractor based in Berlin, handling contracts from roughly EUR 5k up to about EUR 98m, with broadening reach into Brandenburg and the wider eastern/northern German states. Explicitly excludes any offshore or underwater work."
+  },
+  "8f36541adb37d9f1": {
+    "cpv_ladder": {
+      "0.0": [
+        {
+          "code": "45210000",
+          "label": "Building construction work"
+        },
+        {
+          "code": "45211000",
+          "label": "Construction of multi-dwelling buildings and individual houses"
+        },
+        {
+          "code": "45213000",
+          "label": "Construction of commercial buildings, warehouses and industrial buildings"
+        },
+        {
+          "code": "45214000",
+          "label": "Construction of buildings relating to education and research"
+        },
+        {
+          "code": "45215000",
+          "label": "Construction of health and social services buildings"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "45212000",
+          "label": "Construction work for buildings relating to leisure, sports, culture"
+        },
+        {
+          "code": "45216000",
+          "label": "Construction of buildings for public order/emergency services"
+        },
+        {
+          "code": "45220000",
+          "label": "Engineering works and construction works"
+        },
+        {
+          "code": "45262000",
+          "label": "Special trade construction works"
+        },
+        {
+          "code": "45223000",
+          "label": "Structures construction work"
+        },
+        {
+          "code": "45261000",
+          "label": "Roof works and other special trade works"
+        },
+        {
+          "code": "45400000",
+          "label": "Building completion work"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "45200000",
+          "label": "Works for complete or part construction and civil engineering"
+        },
+        {
+          "code": "45300000",
+          "label": "Building installation work"
+        },
+        {
+          "code": "45400000",
+          "label": "Building completion work"
+        },
+        {
+          "code": "45450000",
+          "label": "Other building completion work"
+        },
+        {
+          "code": "45111000",
+          "label": "Demolition, site preparation and clearance work"
+        },
+        {
+          "code": "45262500",
+          "label": "Masonry and bricklaying work"
+        },
+        {
+          "code": "45320000",
+          "label": "Insulation work"
+        },
+        {
+          "code": "45421000",
+          "label": "Joinery and carpentry installation"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "45100000",
+          "label": "Site preparation work"
+        },
+        {
+          "code": "45200000",
+          "label": "Complete or part construction and civil engineering work"
+        },
+        {
+          "code": "45300000",
+          "label": "Building installation work"
+        },
+        {
+          "code": "45400000",
+          "label": "Building completion work"
+        },
+        {
+          "code": "45500000",
+          "label": "Hire of construction machinery with operator"
+        },
+        {
+          "code": "71200000",
+          "label": "Architectural and related services"
+        },
+        {
+          "code": "71300000",
+          "label": "Engineering services"
+        },
+        {
+          "code": "44100000",
+          "label": "Construction materials and associated items"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "45",
+          "label": "Construction work (all)"
+        },
+        {
+          "code": "71",
+          "label": "Architectural, construction, engineering and inspection services"
+        },
+        {
+          "code": "44",
+          "label": "Construction structures, materials and auxiliary products"
+        },
+        {
+          "code": "50700000",
+          "label": "Repair and maintenance of building installations"
+        },
+        {
+          "code": "90500000",
+          "label": "Refuse and waste related services"
+        },
+        {
+          "code": "79930000",
+          "label": "Specialty design services"
+        }
+      ],
+      "1.0": []
+    },
+    "nuts_ladder": {
+      "0.0": [
+        {
+          "code": "DE212",
+          "label": "Muenchen, Kreisfreie Stadt"
+        },
+        {
+          "code": "DE21",
+          "label": "Oberbayern"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "DE21",
+          "label": "Oberbayern"
+        },
+        {
+          "code": "DE27",
+          "label": "Schwaben"
+        },
+        {
+          "code": "DE22",
+          "label": "Niederbayern"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "DE2",
+          "label": "Bayern"
+        },
+        {
+          "code": "DE23",
+          "label": "Oberpfalz"
+        },
+        {
+          "code": "DE24",
+          "label": "Oberfranken"
+        },
+        {
+          "code": "DE25",
+          "label": "Mittelfranken"
+        },
+        {
+          "code": "DE26",
+          "label": "Unterfranken"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "DE2",
+          "label": "Bayern"
+        },
+        {
+          "code": "DE1",
+          "label": "Baden-Wuerttemberg"
+        },
+        {
+          "code": "DE7",
+          "label": "Hessen"
+        },
+        {
+          "code": "DEG",
+          "label": "Thueringen"
+        },
+        {
+          "code": "DED",
+          "label": "Sachsen"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "DE1",
+          "label": "Baden-Wuerttemberg"
+        },
+        {
+          "code": "DE2",
+          "label": "Bayern"
+        },
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DE7",
+          "label": "Hessen"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DEA",
+          "label": "Nordrhein-Westfalen"
+        },
+        {
+          "code": "DEB",
+          "label": "Rheinland-Pfalz"
+        },
+        {
+          "code": "DEC",
+          "label": "Saarland"
+        },
+        {
+          "code": "DED",
+          "label": "Sachsen"
+        },
+        {
+          "code": "DEE",
+          "label": "Sachsen-Anhalt"
+        },
+        {
+          "code": "DEG",
+          "label": "Thueringen"
+        }
+      ],
+      "1.0": []
+    },
+    "exclude_keywords_ladder": {
+      "0.0": [
+        "offshore",
+        "Offshore-Windpark",
+        "Offshore-Plattform",
+        "Hochsee",
+        "Seekabel",
+        "Meeresboden",
+        "Bohrinsel",
+        "maritime Bauwerke",
+        "Unterwasserarbeiten",
+        "Taucharbeiten"
+      ],
+      "0.2": [
+        "offshore",
+        "Offshore-Windpark",
+        "Offshore-Plattform",
+        "Hochsee",
+        "Seekabel",
+        "Bohrinsel",
+        "Unterwasserarbeiten",
+        "Taucharbeiten"
+      ],
+      "0.4": [
+        "offshore",
+        "Offshore-Windpark",
+        "Offshore-Plattform",
+        "Hochsee",
+        "Bohrinsel"
+      ],
+      "0.6": [
+        "offshore",
+        "Offshore-Windpark",
+        "Bohrinsel"
+      ],
+      "0.8": [
+        "offshore"
+      ],
+      "1.0": []
+    },
+    "role_hint_ladder": {
+      "0.0": [
+        "Hochbau",
+        "Gebaeudeerrichtung",
+        "Neubau",
+        "Rohbau",
+        "Bauleistungen",
+        "Generalunternehmer",
+        "Umbau",
+        "Erweiterungsbau",
+        "Sanierung Gebaeude"
+      ],
+      "0.2": [
+        "Hochbau",
+        "Gebaeudeerrichtung",
+        "Neubau",
+        "Rohbau",
+        "Bauleistungen",
+        "Generalunternehmer",
+        "Umbau"
+      ],
+      "0.4": [
+        "Hochbau",
+        "Neubau",
+        "Rohbau",
+        "Bauleistungen"
+      ],
+      "0.6": [
+        "Hochbau",
+        "Bauleistungen"
+      ],
+      "0.8": [
+        "Bauleistungen"
+      ],
+      "1.0": []
+    },
+    "value_min_tight": 4893,
+    "value_min_loose": 0,
+    "value_max_tight": 98329844,
+    "value_max_loose": 2000000000,
+    "notes": "Building construction (Hochbau) contractor based in Munich, handling contracts from roughly EUR 4.9k up to EUR 98m, with core focus on Oberbayern/Bayern and willingness to travel to adjacent German states. Explicitly excludes any offshore or marine work."
   }
 }

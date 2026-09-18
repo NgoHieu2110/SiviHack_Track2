@@ -1,7 +1,7 @@
-# Tender Matching Backend (FastAPI + Gemini)
+# Tender Matching Backend (FastAPI + Claude)
 
 Backend độc lập nhận `CompanyProfile` từ frontend Next.js, đọc các file
-`.md` chứa thông tin gói thầu trong thư mục `tenders/`, gọi Gemini để
+`.md` chứa thông tin gói thầu trong thư mục `tenders/`, gọi Claude để
 chấm điểm mức độ phù hợp, và trả về `{ matches: TenderMatch[] }` — đúng
 shape mà file `api.ts` phía frontend của bạn đang gọi.
 
@@ -23,16 +23,15 @@ cp .env.example .env
 Sửa `.env`:
 
 ```
-GEMINI_API_KEY=<API key thật của bạn từ https://aistudio.google.com/apikey>
-GEMINI_MODEL=gemini-2.5-flash
+ANTHROPIC_API_KEY=<API key thật của bạn từ https://console.anthropic.com/settings/keys>
+CLAUDE_MODEL=claude-opus-5
 TENDERS_DIR=./tenders
 ALLOWED_ORIGINS=http://localhost:3000
 ```
 
-> **Lưu ý về model:** theo tài liệu Google tại thời điểm viết file này,
-> Gemini 2.5 dự kiến ngừng hỗ trợ vào tháng 10/2026. Nếu `gemini-2.5-flash`
-> báo lỗi, kiểm tra model mới nhất tại
-> https://ai.google.dev/gemini-api/docs/models và đổi `GEMINI_MODEL`
+> **Lưu ý về model:** nếu `claude-opus-5` báo lỗi (model bị đổi tên/ngừng
+> hỗ trợ), kiểm tra model mới nhất tại
+> https://docs.claude.com/en/docs/about-claude/models và đổi `CLAUDE_MODEL`
 > trong `.env` — code không cần sửa gì thêm.
 
 ## 3. Bỏ 10 file `.md` gói thầu vào thư mục `tenders/`
@@ -110,7 +109,7 @@ backend/
 ├── main.py            # FastAPI app, route POST /tenders/match
 ├── models.py           # Pydantic models khớp tender-types.ts
 ├── tender_loader.py     # Đọc + cache 10 file .md
-├── gemini_service.py    # Gọi Gemini, chấm điểm, ghép kết quả
+├── claude_service.py    # Gọi Claude, chấm điểm, ghép kết quả
 ├── requirements.txt
 ├── .env.example
 └── tenders/
@@ -123,9 +122,9 @@ backend/
 2. Backend đọc toàn bộ tender từ `tenders/*.md` (dùng cache, không đọc
    lại file không đổi).
 3. Ghép `CompanyProfile` + danh sách tender thành 1 prompt, gửi cho
-   Gemini, yêu cầu trả về JSON: `{id, score, reasons, considerations, summary}`
+   Claude, yêu cầu trả về JSON: `{id, score, reasons, considerations, summary}`
    cho từng tender.
 4. Backend **tự ráp lại** `TenderMatch` bằng dữ liệu `Tender` gốc từ file
-   (không lấy trực tiếp từ Gemini) để tránh AI bịa sai số liệu — Gemini
+   (không lấy trực tiếp từ Claude) để tránh AI bịa sai số liệu — Claude
    chỉ quyết định điểm số và lý do, không được phép sửa dữ liệu gốc.
 5. Trả về `{ matches: TenderMatch[] }`, sắp xếp theo `score` giảm dần.

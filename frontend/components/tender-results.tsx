@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { formatCurrency } from "@/lib/tender-mock"
+import { ApiError, refineTendersRequest } from "@/lib/api"
 import type { TenderMatch } from "@/lib/tender-types"
 import {
   Sparkles,
@@ -30,7 +31,12 @@ type Props = {
   selectedId: string | null
   onSelect: (id: string) => void
   onViewDetails: (id: string) => void
+  /** A /tenders/refine call found a replacement for a dismissed slot --
+   * append it to the parent's matches so the reel can settle onto it. */
+  onReplace: (replacement: TenderMatch) => void
 }
+
+type Settle = { id: string; nonce: number } | null
 
 /** Fixed geometry for the slot-machine reels. */
 const CARD_H = 550 // taller focused card so it fills the right-side panel
@@ -60,9 +66,6 @@ function EmptyState({ loading }: { loading: boolean }) {
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             Matching your company against available public tenders and scoring each one.
           </p>
-          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Matching your company against available public tenders and scoring each one.
-          </p>
         </>
       ) : (
         <>
@@ -71,8 +74,6 @@ function EmptyState({ loading }: { loading: boolean }) {
           </div>
           <h3 className="text-base font-semibold">Your top tenders will appear here</h3>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Complete your company profile on the left and run the match. Then spin each reel to roll through every
-            tender — whatever lands in the middle lane becomes your active pick.
             Complete your company profile on the left and run the match. Then spin each reel to roll through every
             tender — whatever lands in the middle lane becomes your active pick.
           </p>
@@ -88,14 +89,14 @@ function TenderCard({
   index,
   active,
   isSelected,
-  onSelect,
+  onChoose,
   onViewDetails,
 }: {
   match: TenderMatch
   index: number
   active: boolean
   isSelected: boolean
-  onSelect: (id: string) => void
+  onChoose: () => void
   onViewDetails: (id: string) => void
 }) {
   const { tender, score, reasons, considerations, summary } = match
@@ -107,20 +108,22 @@ function TenderCard({
       onKeyDown={
         active
           ? (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault()
-              onViewDetails(tender.id)
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                onViewDetails(tender.id)
+              }
             }
-          }
           : undefined
       }
-      className={`flex h-full w-full flex-col rounded-xl border bg-card shadow-lg transition-colors ${active ? "cursor-pointer hover:border-amber-400" : ""
-        } ${isSelected
+      className={`flex h-full w-full flex-col rounded-xl border bg-card shadow-lg transition-colors ${
+        active ? "cursor-pointer hover:border-amber-400" : ""
+      } ${
+        isSelected
           ? "border-amber-500 ring-2 ring-amber-500/50"
           : active
             ? "border-amber-400/80"
             : "border-border"
-        }`}
+      }`}
     >
       <div className="flex items-start justify-between gap-3 border-b p-3">
         <div className="min-w-0 space-y-1">
@@ -224,13 +227,46 @@ function TenderCard({
           disabled={!active}
           onClick={(e) => {
             e.stopPropagation()
-            onSelect(tender.id)
-            toast.success(isSelected ? "Tender kept as selected" : `Selected "${tender.title}"`)
+            onChoose()
           }}
         >
-          {isSelected ? "Selected" : "Choose"}
+          {isSelected ? "Dismissed" : "Not this one"}
         </Button>
       </div>
+    </div>
+  )
+}
+
+/** Full-column overlay that plays while the backend finds a replacement tender. */
+function SpinOverlay({ matches }: { matches: TenderMatch[] }) {
+  const strip = matches.length > 0 ? matches : []
+  return (
+    <div className="absolute inset-0 z-40 overflow-hidden rounded-2xl border border-amber-400/60 bg-background">
+      <div className="animate-reel-spin">
+        {[...strip, ...strip, ...strip].map((m, i) => (
+          <div
+            key={i}
+            className="mx-1 my-2 flex h-[132px] flex-col justify-between rounded-xl border border-amber-300/40 bg-gradient-to-br from-amber-50 to-background p-3 blur-[1px] dark:border-amber-500/20 dark:from-amber-500/10"
+          >
+            <div className="flex items-center justify-between">
+              <div className="h-2 w-16 rounded bg-amber-300/50" />
+              <div className="text-lg font-bold text-amber-500">{m.score}%</div>
+            </div>
+            <div className="truncate text-sm font-semibold text-foreground/70">{m.tender.title}</div>
+            <div className="h-2 w-24 rounded bg-muted-foreground/20" />
+          </div>
+        ))}
+      </div>
+
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="flex items-center gap-2 rounded-full border border-amber-400/70 bg-background/95 px-4 py-2 text-sm font-medium text-amber-700 shadow-lg dark:text-amber-300">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Finding a new tender…
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
     </div>
   )
 }
@@ -239,16 +275,26 @@ function TenderCard({
 function ReelColumn({
   matches,
   initialIndex,
+  columnIndex,
   selectedId,
-  onSelect,
+  onChoose,
   onViewDetails,
+  onActiveChange,
+  spinning,
+  settle,
+  onSettled,
   reelHeight,
 }: {
   matches: TenderMatch[]
   initialIndex: number
+  columnIndex: number
   selectedId: string | null
-  onSelect: (id: string) => void
+  onChoose: (col: number, match: TenderMatch) => void
   onViewDetails: (id: string) => void
+  onActiveChange: (col: number, id: string | null) => void
+  spinning: boolean
+  settle: Settle
+  onSettled: (col: number) => void
   reelHeight: number
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -256,6 +302,13 @@ function ReelColumn({
   const rafRef = useRef<number | null>(null)
   const activeRef = useRef(initialIndex)
   const [active, setActive] = useState(initialIndex)
+
+  // Keep latest callbacks in refs so effects don't need them as deps.
+  const onActiveChangeRef = useRef(onActiveChange)
+  onActiveChangeRef.current = onActiveChange
+  const onSettledRef = useRef(onSettled)
+  onSettledRef.current = onSettled
+  const settleNonceRef = useRef<number>(0)
 
   const applyEffects = useCallback(() => {
     const container = scrollRef.current
@@ -321,6 +374,27 @@ function ReelColumn({
     }
   }, [])
 
+  // Report the active tender up so the parent can exclude it from replacements.
+  useEffect(() => {
+    onActiveChangeRef.current(columnIndex, matches[active]?.tender.id ?? null)
+  }, [active, columnIndex, matches])
+
+  // When the backend returns a replacement, jump the reel to it (hidden behind
+  // the spin overlay), then tell the parent the slot has settled.
+  useEffect(() => {
+    if (!settle || settle.nonce === settleNonceRef.current) return
+    settleNonceRef.current = settle.nonce
+
+    const container = scrollRef.current
+    const idx = matches.findIndex((m) => m.tender.id === settle.id)
+    if (container && idx >= 0) {
+      container.scrollTop = idx * ITEM_H
+      applyEffects()
+    }
+    const t = setTimeout(() => onSettledRef.current(columnIndex), 650)
+    return () => clearTimeout(t)
+  }, [settle, matches, applyEffects, columnIndex])
+
   const nudge = (dir: 1 | -1) => {
     scrollRef.current?.scrollBy({ top: dir * ITEM_H, behavior: "smooth" })
   }
@@ -333,7 +407,8 @@ function ReelColumn({
         type="button"
         aria-label="Scroll up"
         onClick={() => nudge(-1)}
-        className="absolute -top-1 left-1/2 z-30 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm transition hover:text-amber-600"
+        disabled={spinning}
+        className="absolute -top-1 left-1/2 z-30 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm transition hover:text-amber-600 disabled:opacity-40"
       >
         <ChevronUp className="h-4 w-4" />
       </button>
@@ -360,7 +435,7 @@ function ReelColumn({
                 index={i}
                 active={i === active}
                 isSelected={selectedId === match.tender.id}
-                onSelect={onSelect}
+                onChoose={() => onChoose(columnIndex, match)}
                 onViewDetails={onViewDetails}
               />
             </div>
@@ -373,19 +448,35 @@ function ReelColumn({
         type="button"
         aria-label="Scroll down"
         onClick={() => nudge(1)}
-        className="absolute -bottom-1 left-1/2 z-30 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm transition hover:text-amber-600"
+        disabled={spinning}
+        className="absolute -bottom-1 left-1/2 z-30 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm transition hover:text-amber-600 disabled:opacity-40"
       >
         <ChevronDown className="h-4 w-4" />
       </button>
+
+      {spinning && <SpinOverlay matches={matches} />}
     </div>
   )
 }
 
-export function TenderResults({ matches, loading, hasSearched, selectedId, onSelect, onViewDetails }: Props) {
+export function TenderResults({
+  matches,
+  loading,
+  hasSearched,
+  selectedId,
+  onSelect,
+  onViewDetails,
+  onReplace,
+}: Props) {
   // Measure the reel viewport so each column stretches to fill the available
   // page height instead of a fixed pixel value.
   const reelBoxRef = useRef<HTMLDivElement>(null)
   const [reelHeight, setReelHeight] = useState(MIN_REEL_H)
+
+  // Per-column spin + settle state for the "find a replacement" flow.
+  const [spinning, setSpinning] = useState<boolean[]>([false, false, false])
+  const [settle, setSettle] = useState<Settle[]>([null, null, null])
+  const activeIdsRef = useRef<(string | null)[]>([null, null, null])
 
   useLayoutEffect(() => {
     const el = reelBoxRef.current
@@ -400,6 +491,66 @@ export function TenderResults({ matches, loading, hasSearched, selectedId, onSel
     ro.observe(el)
     return () => ro.disconnect()
   }, [loading, hasSearched, matches.length])
+
+  // Reset per-column state whenever a brand-new search comes in (matches[0]
+  // changing identity is what distinguishes a fresh /tenders/match result
+  // from onReplace() merely appending one replacement tender to the same
+  // result set -- an append must NOT wipe the settle/spin state that
+  // handleChoose is about to set for the column that triggered it).
+  const firstMatchId = matches[0]?.tender.id ?? null
+  const prevFirstMatchIdRef = useRef(firstMatchId)
+  useEffect(() => {
+    if (prevFirstMatchIdRef.current === firstMatchId) return
+    prevFirstMatchIdRef.current = firstMatchId
+    setSpinning([false, false, false])
+    setSettle([null, null, null])
+    activeIdsRef.current = [null, null, null]
+  }, [firstMatchId])
+
+  const handleActiveChange = useCallback((col: number, id: string | null) => {
+    activeIdsRef.current[col] = id
+  }, [])
+
+  const handleSettled = useCallback((col: number) => {
+    setSpinning((s) => s.map((v, i) => (i === col ? false : v)))
+  }, [])
+
+  const handleChoose = useCallback(
+    async (col: number, match: TenderMatch) => {
+      // The 3 tenders currently centered in each reel -- /tenders/refine
+      // needs all 3 (by raw markdown) plus which one to treat as dismissed.
+      const tenders = [0, 1, 2].map((c) =>
+        c === col ? match.tender.markdown : matches.find((m) => m.tender.id === activeIdsRef.current[c])?.tender.markdown,
+      )
+      if (tenders.some((t) => !t)) {
+        toast.error("Could not determine the currently shown tenders. Please try again.")
+        return
+      }
+
+      onSelect(match.tender.id)
+      toast.success(`Noted "${match.tender.title}" as not a fit — finding a new tender for this slot…`)
+
+      // Start the reel spinning while the backend works.
+      setSpinning((s) => s.map((v, i) => (i === col ? true : v)))
+
+      try {
+        const result = await refineTendersRequest(tenders as [string, string, string], col as 0 | 1 | 2)
+
+        if (result.replacement) {
+          const replacement = result.replacement
+          onReplace(replacement)
+          setSettle((s) => s.map((v, i) => (i === col ? { id: replacement.tender.id, nonce: Date.now() } : v)))
+        } else {
+          setSpinning((s) => s.map((v, i) => (i === col ? false : v)))
+          toast.message("No more tenders available to fill this slot.")
+        }
+      } catch (err) {
+        setSpinning((s) => s.map((v, i) => (i === col ? false : v)))
+        toast.error(err instanceof ApiError ? err.message : "Could not reach the matching service. Please try again.")
+      }
+    },
+    [onSelect, onReplace, matches],
+  )
 
   if (loading || !hasSearched) {
     return <EmptyState loading={loading} />
@@ -450,9 +601,14 @@ export function TenderResults({ matches, loading, hasSearched, selectedId, onSel
               key={col}
               matches={matches}
               initialIndex={start}
+              columnIndex={col}
               selectedId={selectedId}
-              onSelect={onSelect}
+              onChoose={handleChoose}
               onViewDetails={onViewDetails}
+              onActiveChange={handleActiveChange}
+              spinning={spinning[col]}
+              settle={settle[col]}
+              onSettled={handleSettled}
               reelHeight={reelHeight}
             />
           ))}

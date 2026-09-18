@@ -5,7 +5,7 @@
 # hand-edit afterward; re-running the generator script will overwrite it
 # completely, so save manual tweaks elsewhere if you want to keep them.
 #
-# Ladder cache key: 9675395e4c36a012  (see .filter_ladders_cache.json --
+# Ladder cache key: 8f36541adb37d9f1  (see .filter_ladders_cache.json --
 # if this filters.yaml ever looks wrong for the company it was built
 # from, check whether this key collides with another company's entry)
 #
@@ -38,35 +38,57 @@ tolerance:
 
 # cpv_prefixes (tolerance=0.50, snapped to step 0.4)
 cpv_prefixes:
-  - "4531"  # Electrical installation work
+  - "45200000"  # Works for complete or part construction and civil engineering
   - "45300000"  # Building installation work
+  - "45400000"  # Building completion work
+  - "45450000"  # Other building completion work
+  - "45111000"  # Demolition, site preparation and clearance work
+  - "45262500"  # Masonry and bricklaying work
+  - "45320000"  # Insulation work
+  - "45421000"  # Joinery and carpentry installation
 
 # nuts_prefixes (tolerance=0.50, snapped to step 0.4)
 nuts_prefixes:
-  - "DE3"  # Berlin
-  - "DE4"  # Brandenburg
-  - "DE5"  # Bremen
-  - "DE6"  # Hamburg
-  - "DE7"  # Hessen
-  - "DE8"  # Mecklenburg-Vorpommern
-  - "DE9"  # Niedersachsen
-  - "DEA"  # Nordrhein-Westfalen
-  - "DEF"  # Schleswig-Holstein
+  - "DE2"  # Bayern
+  - "DE23"  # Oberpfalz
+  - "DE24"  # Oberfranken
+  - "DE25"  # Mittelfranken
+  - "DE26"  # Unterfranken
 
 # value_min / value_max (tolerance=0.50, interpolated between
-# tight [0, 783,834] and
-# loose [0, 7,838,340])
-value_min: 0
-value_max: 4311087
+# tight [4,893, 98,329,844] and
+# loose [0, 2,000,000,000])
+value_min: 2446
+value_max: 1049164922
+
+# match_mode (resolved from --match-mode=auto, avg core tolerance 0.50):
+#   "all" -> strict AND: a tender must satisfy every one of CPV/region/
+#            value that has a filter set (the original, pre-broadening
+#            behavior).
+#   "any" -> soft match: a tender passes if at least
+#            min_criteria_matched of the *considered* CPV/region/value
+#            criteria pass, even if the rest miss. This is what lets
+#            through tenders only partially related to the profile.
+# exclude_keywords / role_hint_reject are NEVER softened by this -- they
+# stay a hard reject in either mode. See matches_profile() in
+# fetch_tenders_oeffentlichevergabe.py for the exact rules.
+match_mode: "any"
+min_criteria_matched: 2
 
 # exclude_keywords (tolerance=0.50, snapped to step 0.4)  # NOTE: tolerance > 0 here means real stated exclusions are being dropped.
 exclude_keywords:
-  - "Gleisbau"
+  - "offshore"
+  - "Offshore-Windpark"
+  - "Offshore-Plattform"
+  - "Hochsee"
+  - "Bohrinsel"
 
 # role_hint_reject (tolerance=0.50, snapped to step 0.4)
 role_hint_reject:
-  - "Elektroinstallation"
-  - "Elektroarbeiten"
+  - "Hochbau"
+  - "Neubau"
+  - "Rohbau"
+  - "Bauleistungen"
 
 # Newer optional fields (procurement_methods_allowed, min_bid_prep_days,
 # reject_reserved_participation, contract_starts_after/_before) are left
@@ -78,4 +100,4 @@ role_hint_reject:
 # contract_starts_after: null
 # contract_starts_before: null
 
-notes: "Filter for an electrical installation contractor operating across Northern Germany (HB, HH, MV, NI, SH) with projects up to ~784k EUR. [Generated at tolerance: cpv=0.50, nuts=0.50, value=0.50, exclude=0.50, role_hint=0.50]"
+notes: "Building construction (Hochbau) contractor based in Munich, handling contracts from roughly EUR 4.9k up to EUR 98m, with core focus on Oberbayern/Bayern and willingness to travel to adjacent German states. Explicitly excludes any offshore or marine work. [Generated at tolerance: cpv=0.50, nuts=0.50, value=0.50, exclude=0.50, role_hint=0.50]"

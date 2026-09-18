@@ -17,7 +17,7 @@ notes) is appended at the very bottom of the returned tender's
 notice_id from that raw markdown) keeps working against tenders selected
 this way.
 
-GEMINI is used only for what it's good at: comparing the parsed tenders
+CLAUDE is used only for what it's good at: comparing the parsed tenders
 against a company profile, picking the best `count` of them, and
 explaining why (score + reasons + considerations + summary).
 
@@ -51,7 +51,7 @@ import re
 import sys
 from pathlib import Path
 
-from common import get_gemini_api_key
+from common import get_anthropic_api_key
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent
@@ -59,12 +59,19 @@ DEFAULT_RAW_TENDERS_DIR = BACKEND_DIR / "tenders"
 DEFAULT_COMPANY_DETAILS_PATH = SCRIPT_DIR / "company_details.json"
 DEFAULT_COUNT = 3
 
-# NOTE: same model-retirement caveat as elsewhere in this project -- if this
-# stops resolving, check https://ai.google.dev/gemini-api/docs/models for
-# the current name and set GEMINI_MODEL in your .env (no code change needed).
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-5")
 
-RAW_JSON_BLOCK_RE = re.compile(r"```json\s*\n(.*?)\n```", re.DOTALL)
+# Anchored to the "Full raw release JSON" section specifically (not just the
+# first ```json block in the file) -- tenders matched with a tolerance dial
+# set (the default -- see fetch_tenders_oeffentlichevergabe.py's
+# render_markdown()) have an EARLIER, smaller ```json block under "Filter
+# tolerance at match time" (e.g. {"cpv": 0.5, "nuts": 0.5, ...}). A bare
+# "first ```json block" search silently matched that tolerance dict instead
+# of the real OCDS release, making every field below (value, location,
+# deadline, cpvCode, ...) come back blank/zero.
+RAW_JSON_BLOCK_RE = re.compile(
+    r"## Full raw release JSON\s*\n+```json\s*\n(.*?)\n```", re.DOTALL
+)
 BOLD_FIELD_RE = re.compile(r"^\*\*([^:*]+):\*\*\s*(.+)$", re.MULTILINE)
 NOTES_LINE_RE = re.compile(r"^_(Matched against.*)_\s*$", re.MULTILINE)
 
@@ -105,6 +112,26 @@ def parse_raw_tender_md(path: Path) -> dict:
     items = tender.get("items") or []
     lots = tender.get("lots") or []
     value = tender.get("value") or {}
+
+    # Same tender.value -> summed tender.lots[].value fallback as
+    # fetch_tenders_oeffentlichevergabe.py's get_release_value() -- some
+    # notices only carry a value per lot, not at the tender level, and
+    # those are exactly the ones that got matched via that fallback in the
+    # first place, so this has to mirror it or the amount comes back 0.
+    value_amount = value.get("amount")
+    value_currency = value.get("currency")
+    if value_amount is None:
+        lot_total = 0.0
+        lot_currency = None
+        found = False
+        for lot in lots:
+            lv = lot.get("value") or {}
+            if lv.get("amount") is not None:
+                lot_total += lv["amount"]
+                lot_currency = lv.get("currency", lot_currency)
+                found = True
+        if found:
+            value_amount, value_currency = lot_total, lot_currency
 
     first_item = items[0] if items else {}
     classification = first_item.get("classification") or {}
@@ -167,8 +194,8 @@ def parse_raw_tender_md(path: Path) -> dict:
         "cpvLabel": classification.get("description", ""),
         "contractNature": contract_nature,
         "location": location,
-        "value": value.get("amount") or 0,
-        "currency": value.get("currency") or "EUR",
+        "value": value_amount or 0,
+        "currency": value_currency or "EUR",
         "deadline": (tender.get("tenderPeriod") or {}).get("endDate", ""),
         "role": "",
         "requiredCertificates": [],
@@ -298,57 +325,65 @@ def select_tenders_with_ai_from_raw(
     profile: dict,
     count: int = DEFAULT_COUNT,
     raw_dir: Path = DEFAULT_RAW_TENDERS_DIR,
+    exclude_ids: set[str] | None = None,
 ) -> list:
-    """Read every raw .md in raw_dir, ask Gemini to pick the `count` best
+    """Read every raw .md in raw_dir, ask Claude to pick the `count` best
     matches against `profile`, and return TenderMatch-shaped dicts
     (tender + score + reasons + considerations + summary) ready to hand
     straight to the frontend.
+
+    exclude_ids: notice ids to drop from the candidate pool before asking
+    Claude -- e.g. tenders already shown to the user elsewhere in the same
+    request (see 8_change_filter_tolerance.py's use of this for the
+    /tenders/refine replacement slot, which must not just re-suggest one of
+    the 2 tenders the user already kept).
 
     Raises FileNotFoundError / ValueError / RuntimeError, never sys.exit,
     so it's safe to call from other code (e.g. a web backend).
     """
     tenders = _load_all_raw_tenders(raw_dir)
+    if exclude_ids:
+        tenders = [t for t in tenders if t.get("id") not in exclude_ids]
+    if not tenders:
+        raise ValueError(f"no raw tender files left in {raw_dir} after excluding already-shown ones")
 
     if len(tenders) <= count:
         print(
             f"  Only {len(tenders)} tender(s) available (<= requested {count}) -- "
-            f"asking Gemini to rank/explain all of them."
+            f"asking Claude to rank/explain all of them."
         )
 
-    from google import genai
-    from google.genai import types
+    import anthropic
 
-    api_key = get_gemini_api_key()
-    client = genai.Client(api_key=api_key)
+    api_key = get_anthropic_api_key()
+    client = anthropic.Anthropic(api_key=api_key)
 
     prompt = _build_selection_prompt(profile, tenders, count)
 
     try:
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.2,
-                response_mime_type="application/json",
-            ),
+        response = client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=16000,
+            messages=[{"role": "user", "content": prompt}],
         )
-    except Exception as e:  # noqa: BLE001 -- surface any Gemini error uniformly
-        raise RuntimeError(f"Gemini call failed while selecting tenders: {e}") from e
+    except anthropic.APIError as e:
+        raise RuntimeError(f"Claude call failed while selecting tenders: {e}") from e
 
-    if not response.text:
-        raise RuntimeError("Gemini returned an empty response while selecting tenders.")
+    text = "".join(block.text for block in response.content if block.type == "text")
+    if not text:
+        raise RuntimeError("Claude returned an empty response while selecting tenders.")
 
     try:
-        raw_results = _extract_json_array(response.text)
+        raw_results = _extract_json_array(text)
     except (json.JSONDecodeError, TypeError) as e:
-        raise RuntimeError(f"Could not parse Gemini's response as JSON: {e}") from e
+        raise RuntimeError(f"Could not parse Claude's response as JSON: {e}") from e
 
     tenders_by_id = {t.get("id"): t for t in tenders if t.get("id")}
     matches = []
     for item in raw_results:
         tender = tenders_by_id.get(item.get("id"))
         if tender is None:
-            # Gemini referenced an id we don't recognize -- skip it rather
+            # Claude referenced an id we don't recognize -- skip it rather
             # than fail the whole selection.
             continue
         matches.append(
@@ -362,7 +397,7 @@ def select_tenders_with_ai_from_raw(
         )
 
     if not matches:
-        raise ValueError("Gemini did not select any recognizable tenders from the candidates.")
+        raise ValueError("Claude did not select any recognizable tenders from the candidates.")
 
     matches.sort(key=lambda m: m["score"], reverse=True)
     return matches[:count]

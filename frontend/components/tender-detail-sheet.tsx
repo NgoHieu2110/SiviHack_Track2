@@ -234,7 +234,7 @@ export function TenderDetailSheet({ match, open, onOpenChange, isSelected, onSel
                 className="w-full"
                 onClick={() => onSelect(tender.id)}
               >
-                {isSelected ? "Selected tender" : "Choose this tender"}
+                {isSelected ? "Dismissed" : "Not this one"}
               </Button>
             </div>
           </>

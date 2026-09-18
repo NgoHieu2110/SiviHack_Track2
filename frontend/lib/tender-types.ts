@@ -26,6 +26,10 @@ export type Tender = {
   guaranteeRequired: string
   startDate: string
   description: string
+  /** Full raw tender .md content, as returned by the backend's
+   * workflow_tools/7_select_from_raw_tenders.py. Required by
+   * /tenders/remove and /tenders/refine to identify the notice server-side. */
+  markdown: string
 }
 
 export type TenderMatch = {

@@ -19,6 +19,7 @@ export const MOCK_TENDERS: Tender[] = [
     startDate: "2027-01-15",
     description:
       "Full structural renovation and modernization of a 1970s school complex including facade, roofing and interior fit-out.",
+    markdown: "",
   },
   {
     id: "T-2026-0478",
@@ -38,6 +39,7 @@ export const MOCK_TENDERS: Tender[] = [
     startDate: "2027-03-01",
     description:
       "Turnkey construction of a new two-storey primary health centre with associated site works and MEP installations.",
+    markdown: "",
   },
   {
     id: "T-2026-0492",
@@ -57,6 +59,7 @@ export const MOCK_TENDERS: Tender[] = [
     startDate: "2026-12-01",
     description:
       "Resurfacing of 12 km of regional road, replacement of drainage channels and installation of new road markings.",
+    markdown: "",
   },
   {
     id: "T-2026-0510",
@@ -76,6 +79,7 @@ export const MOCK_TENDERS: Tender[] = [
     startDate: "2027-02-01",
     description:
       "Replacement of main distribution boards, rewiring and installation of a new emergency power system.",
+    markdown: "",
   },
   {
     id: "T-2026-0523",
@@ -95,6 +99,7 @@ export const MOCK_TENDERS: Tender[] = [
     startDate: "2027-01-01",
     description:
       "Three-year multi-trade maintenance contract covering carpentry, plumbing, painting and minor building works.",
+    markdown: "",
   },
   {
     id: "T-2026-0537",
@@ -114,6 +119,7 @@ export const MOCK_TENDERS: Tender[] = [
     startDate: "2027-05-01",
     description:
       "Design and construction of a new pumping station including civil works, mechanical equipment and 2-year operation.",
+    markdown: "",
   },
 ]
 
