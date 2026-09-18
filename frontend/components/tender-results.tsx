@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -59,6 +59,9 @@ function EmptyState({ loading }: { loading: boolean }) {
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             Matching your company against available public tenders and scoring each one.
           </p>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Matching your company against available public tenders and scoring each one.
+          </p>
         </>
       ) : (
         <>
@@ -67,6 +70,8 @@ function EmptyState({ loading }: { loading: boolean }) {
           </div>
           <h3 className="text-base font-semibold">Your top tenders will appear here</h3>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Complete your company profile on the left and run the match. Then spin each reel to roll through every
+            tender — whatever lands in the middle lane becomes your active pick.
             Complete your company profile on the left and run the match. Then spin each reel to roll through every
             tender — whatever lands in the middle lane becomes your active pick.
           </p>

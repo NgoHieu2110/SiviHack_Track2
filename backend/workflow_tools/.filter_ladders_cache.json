@@ -1,0 +1,323 @@
+{
+  "Web submission 2026-09-18 03:56:58 UTC (186cf2)": {
+    "cpv_ladder": {
+      "0.0": [
+        {
+          "code": "45234100",
+          "label": "Railway construction works"
+        },
+        {
+          "code": "71311230",
+          "label": "Railway engineering services"
+        },
+        {
+          "code": "50220000",
+          "label": "Repair, maintenance and associated services related to railways"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "45234000",
+          "label": "Construction work for railways and cable transport systems"
+        },
+        {
+          "code": "71311200",
+          "label": "Transport engineering services"
+        },
+        {
+          "code": "50220000",
+          "label": "Repair, maintenance and associated services related to railways"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "45234000",
+          "label": "Construction work for railways and cable transport systems"
+        },
+        {
+          "code": "71311000",
+          "label": "Civil engineering services"
+        },
+        {
+          "code": "50200000",
+          "label": "Repair, maintenance and associated services related to transport and other equipment"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "45230000",
+          "label": "Construction work for pipelines, communication and power lines, for highways, roads, airfield and railways"
+        },
+        {
+          "code": "71300000",
+          "label": "Engineering services"
+        },
+        {
+          "code": "50200000",
+          "label": "Repair, maintenance and associated services related to transport and other equipment"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "45000000",
+          "label": "Construction work"
+        },
+        {
+          "code": "71000000",
+          "label": "Architectural, construction, engineering and inspection services"
+        },
+        {
+          "code": "50000000",
+          "label": "Repair and maintenance services"
+        }
+      ],
+      "1.0": []
+    },
+    "nuts_ladder": {
+      "0.0": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "1.0": []
+    },
+    "exclude_keywords_ladder": {
+      "0.0": [],
+      "0.2": [],
+      "0.4": [],
+      "0.6": [],
+      "0.8": [],
+      "1.0": []
+    },
+    "role_hint_ladder": {
+      "0.0": [
+        "Eisenbahnbau",
+        "Gleisbau",
+        "Bahnstrecke",
+        "Eisenbahninfrastruktur"
+      ],
+      "0.2": [
+        "Eisenbahnbau",
+        "Gleisbau",
+        "Bahnstrecke"
+      ],
+      "0.4": [
+        "Eisenbahnbau",
+        "Gleisbau"
+      ],
+      "0.6": [
+        "Gleisbau"
+      ],
+      "0.8": [
+        "Bahn"
+      ],
+      "1.0": []
+    },
+    "value_min_tight": 0,
+    "value_min_loose": 0,
+    "value_max_tight": 89323929,
+    "value_max_loose": 893239290,
+    "notes": "Company operates in railway construction, maintenance, and engineering services with capacity up to EUR 89.3M. Regional preferences cover nationwide Germany tenders."
+  },
+  "Web submission 2026-09-18 05:03:59 UTC (62ab48)": {
+    "cpv_ladder": {
+      "0.0": [
+        {
+          "code": "45234100",
+          "label": "Railway construction works"
+        },
+        {
+          "code": "45234116",
+          "label": "Track construction works"
+        },
+        {
+          "code": "71311230",
+          "label": "Railway engineering services"
+        },
+        {
+          "code": "50220000",
+          "label": "Repair, maintenance and associated services related to railways and other equipment"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "45234000",
+          "label": "Construction work for railways and cable transport systems"
+        },
+        {
+          "code": "71311200",
+          "label": "Transport systems engineering services"
+        },
+        {
+          "code": "50220000",
+          "label": "Repair, maintenance and associated services related to railways and other equipment"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "45230000",
+          "label": "Construction work for pipelines, communication and power lines, for highways, roads, airfields and railways"
+        },
+        {
+          "code": "71311000",
+          "label": "Civil engineering consultancy services"
+        },
+        {
+          "code": "50200000",
+          "label": "Repair, maintenance and associated services related to vehicles and associated equipment"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "45200000",
+          "label": "Works for complete or part construction and civil engineering work"
+        },
+        {
+          "code": "71300000",
+          "label": "Engineering services"
+        },
+        {
+          "code": "50000000",
+          "label": "Repair and maintenance services"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "45000000",
+          "label": "Construction work"
+        },
+        {
+          "code": "71000000",
+          "label": "Architectural, construction, engineering and inspection services"
+        },
+        {
+          "code": "50000000",
+          "label": "Repair and maintenance services"
+        },
+        {
+          "code": "60000000",
+          "label": "Transport services (excl. Waste transport)"
+        }
+      ],
+      "1.0": []
+    },
+    "nuts_ladder": {
+      "0.0": [
+        {
+          "code": "HU11",
+          "label": "Budapest"
+        },
+        {
+          "code": "HU12",
+          "label": "Pest"
+        },
+        {
+          "code": "HU2",
+          "label": "Dunántúl"
+        },
+        {
+          "code": "HU3",
+          "label": "Alföld és Észak"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "HU",
+          "label": "Hungary"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "HU",
+          "label": "Hungary"
+        },
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "HU",
+          "label": "Hungary"
+        },
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "HU",
+          "label": "Hungary"
+        },
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "1.0": []
+    },
+    "exclude_keywords_ladder": {
+      "0.0": [],
+      "0.2": [],
+      "0.4": [],
+      "0.6": [],
+      "0.8": [],
+      "1.0": []
+    },
+    "role_hint_ladder": {
+      "0.0": [
+        "Eisenbahnbau",
+        "Gleisbau",
+        "Bahnstrecke",
+        "Eisenbahninfrastruktur",
+        "Gleisanlagen"
+      ],
+      "0.2": [
+        "Eisenbahnbau",
+        "Gleisbau",
+        "Bahninfrastruktur"
+      ],
+      "0.4": [
+        "Eisenbahn",
+        "Gleisbau"
+      ],
+      "0.6": [
+        "Eisenbahn"
+      ],
+      "0.8": [],
+      "1.0": []
+    },
+    "value_min_tight": 0,
+    "value_min_loose": 0,
+    "value_max_tight": 8434339934,
+    "value_max_loose": 84343399340,
+    "notes": "Company focused on railway construction and service projects based or operating in Hungary, with an extremely large maximum financial capacity."
+  }
+}
