@@ -1,6 +1,5 @@
 export type CompanyProfile = {
   does: string
-  contractNature: string
   placeOfPerformance: string
   contractValueMin: string
   contractValueMax: string
@@ -36,5 +35,3 @@ export type TenderMatch = {
   considerations: string[]
   summary: string
 }
-
-export const CONTRACT_NATURE_OPTIONS = ["Works", "Services", "Supplies", "Mixed (Works & Services)"]
