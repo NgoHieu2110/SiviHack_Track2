@@ -14,7 +14,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class CompanyProfile(BaseModel):
     model_config = ConfigDict(extra="allow")
-
     does: str
     contractNature: str
     placeOfPerformance: str

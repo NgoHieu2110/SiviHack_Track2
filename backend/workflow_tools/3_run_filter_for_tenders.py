@@ -15,6 +15,19 @@ longer exists in company_details.json. This is a validation-only use of
 company_details.json -- the fetch/filter logic itself is driven entirely by
 filters.yaml, exactly as before.
 
+Importable use:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "run_filter_for_tenders", "3_run_filter_for_tenders.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    mod.run_filter_for_tenders(target=40, max_days=90)
+
+(The leading digit means this file can't be imported with a plain `import
+3_run_filter_for_tenders` statement -- see 1_company_md_to_company_details.py's
+docstring for why, and the same importlib pattern applies here.)
+
 Expected layout (paths default accordingly, all overridable via flags):
     backend/
       oeffentlichevergabe/
@@ -55,21 +68,23 @@ def load_fetch_module(module_path: Path):
     sys.path and its filename can't be imported as a normal module name from
     a numbered sibling script), so this loads it directly from disk."""
     if not module_path.exists():
-        sys.exit(
-            f"ERROR: fetch module not found at {module_path}\n"
-            f"Pass --fetch-module to point at fetch_tenders_oeffentlichevergabe.py explicitly."
+        raise FileNotFoundError(
+            f"fetch module not found at {module_path}\n"
+            f"Pass fetch_module_path to point at fetch_tenders_oeffentlichevergabe.py explicitly."
         )
     spec = importlib.util.spec_from_file_location("fetch_tenders_oeffentlichevergabe", module_path)
     module = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(module)
     except Exception as e:
-        sys.exit(f"ERROR: failed to import {module_path}: {e}")
+        raise RuntimeError(f"failed to import {module_path}: {e}") from e
 
     for attr in ("run", "load_companies", "slugify", "OUTPUT_ROOT"):
         if not hasattr(module, attr):
-            sys.exit(f"ERROR: {module_path} is missing expected attribute '{attr}' -- "
-                      f"is this the right file?")
+            raise RuntimeError(
+                f"{module_path} is missing expected attribute '{attr}' -- "
+                f"is this the right file?"
+            )
     return module
 
 
@@ -112,6 +127,70 @@ def validate_filters_against_company_details(filters_companies: dict, company_de
     return errors
 
 
+def run_filter_for_tenders(
+    filters_path: Path = DEFAULT_FILTERS_PATH,
+    company_details_path: Path = DEFAULT_COMPANY_DETAILS_PATH,
+    fetch_module_path: Path = DEFAULT_FETCH_MODULE_PATH,
+    output_dir: Path = DEFAULT_OUTPUT_DIR,
+    target: int = DEFAULT_TARGET_COUNT,
+    max_days: int = DEFAULT_MAX_DAYS_BACK,
+    companies: list = None,
+    force: bool = False,
+):
+    """Library entry point mirroring the CLI: validate filters.yaml against
+    company_details.json, then run fetch_tenders_oeffentlichevergabe.py's
+    own run() against that filters.yaml. Raises FileNotFoundError /
+    RuntimeError / ValueError on failure instead of calling sys.exit.
+
+    All path arguments accept str or Path.
+    """
+    filters_path = Path(filters_path)
+    company_details_path = Path(company_details_path)
+    fetch_module_path = Path(fetch_module_path)
+    output_dir = Path(output_dir)
+
+    print(f"Fetch module:      {fetch_module_path}")
+    print(f"Filters:           {filters_path}")
+    print(f"Company details:   {company_details_path}")
+    print(f"Output dir:        {output_dir}")
+    print()
+
+    module = load_fetch_module(fetch_module_path)
+
+    if not filters_path.exists():
+        raise FileNotFoundError(f"filters file not found: {filters_path}")
+
+    # load_companies() also enforces required fields (display_name,
+    # cpv_prefixes, nuts_prefixes), so a structurally broken filters.yaml
+    # fails here before we even get to the company_details.json check.
+    filters_companies = module.load_companies(filters_path)
+
+    print("Validating filters.yaml against company_details.json...")
+    errors = validate_filters_against_company_details(filters_companies, company_details_path, module.slugify)
+    if errors:
+        print("\nVALIDATION FAILED:")
+        for e in errors:
+            print(f"  - {e}")
+        if force:
+            print("\nforce=True given: continuing despite the above.\n")
+        else:
+            raise ValueError(
+                "Aborting before running the fetch. Fix filters.yaml / "
+                "company_details.json, or pass force=True to run anyway. "
+                "Errors: " + "; ".join(errors)
+            )
+    else:
+        print("  OK: every company in filters.yaml matches an entry in company_details.json.\n")
+
+    # fetch_tenders_oeffentlichevergabe.py hardcodes its OUTPUT_ROOT relative
+    # to its own script location; override it here so results land in
+    # backend/tenders regardless of where the fetch module itself lives.
+    output_dir.mkdir(parents=True, exist_ok=True)
+    module.OUTPUT_ROOT = output_dir
+
+    return module.run(target, max_days, companies, filters_path)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--filters", type=Path, default=DEFAULT_FILTERS_PATH,
@@ -132,45 +211,19 @@ def main():
                          help="Run even if the company_details.json validation finds mismatches")
     args = parser.parse_args()
 
-    print(f"Fetch module:      {args.fetch_module}")
-    print(f"Filters:           {args.filters}")
-    print(f"Company details:   {args.company_details}")
-    print(f"Output dir:        {args.output_dir}")
-    print()
-
-    module = load_fetch_module(args.fetch_module)
-
-    if not args.filters.exists():
-        sys.exit(f"ERROR: filters file not found: {args.filters}")
-
-    # load_companies() also enforces required fields (display_name,
-    # cpv_prefixes, nuts_prefixes), so a structurally broken filters.yaml
-    # fails here before we even get to the company_details.json check.
-    filters_companies = module.load_companies(args.filters)
-
-    print("Validating filters.yaml against company_details.json...")
-    errors = validate_filters_against_company_details(filters_companies, args.company_details, module.slugify)
-    if errors:
-        print("\nVALIDATION FAILED:")
-        for e in errors:
-            print(f"  - {e}")
-        if args.force:
-            print("\n--force given: continuing despite the above.\n")
-        else:
-            sys.exit(
-                "\nAborting before running the fetch. Fix filters.yaml / "
-                "company_details.json, or pass --force to run anyway."
-            )
-    else:
-        print("  OK: every company in filters.yaml matches an entry in company_details.json.\n")
-
-    # fetch_tenders_oeffentlichevergabe.py hardcodes its OUTPUT_ROOT relative
-    # to its own script location; override it here so results land in
-    # backend/tenders regardless of where the fetch module itself lives.
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    module.OUTPUT_ROOT = args.output_dir
-
-    module.run(args.target, args.max_days, args.companies, args.filters)
+    try:
+        run_filter_for_tenders(
+            filters_path=args.filters,
+            company_details_path=args.company_details,
+            fetch_module_path=args.fetch_module,
+            output_dir=args.output_dir,
+            target=args.target,
+            max_days=args.max_days,
+            companies=args.companies,
+            force=args.force,
+        )
+    except (FileNotFoundError, RuntimeError, ValueError) as e:
+        sys.exit(f"ERROR: {e}")
 
 
 if __name__ == "__main__":

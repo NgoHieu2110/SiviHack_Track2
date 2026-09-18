@@ -6,8 +6,27 @@ Converts a freeform Markdown company profile (e.g. company.md) into a
 structured JSON record matching the schema used in company_details.json,
 using the Gemini API to do the extraction.
 
-Usage:
-    export GEMINI_API_KEY="your-key-here"
+Importable use:
+    from importlib import import_module
+    mod = import_module("1_company_md_to_company_details")  # see note below
+    record = mod.company_md_to_details("path/to/company.md")
+
+    # or, appending straight into company_details.json like the CLI does:
+    data = mod.run(["path/to/company.md"], out_path="company_details.json")
+
+Note on the leading digit: this file can't be imported with a normal
+`import 1_company_md_to_company_details` statement (Python identifiers
+can't start with a digit). Either use importlib as above, or from a
+sibling script in the same folder do:
+
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "company_md_to_details", "1_company_md_to_company_details.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+CLI usage (unchanged):
+    export GEMINI_API_KEY="your-key-here"   # or set it in backend/.env
     python 1_company_md_to_company_details.py path/to/company.md \
         [--out company_details.json] [--model gemini-2.5-flash]
 
@@ -23,10 +42,11 @@ Behavior:
       created with that structure.
 
 Security note:
-    The Gemini API key is read from the GEMINI_API_KEY environment variable.
-    Never hardcode API keys in source files or commit them to version
-    control. If a key has ever been pasted into a chat, a document, or a
-    public repo, treat it as compromised and rotate it immediately in
+    The Gemini API key is read from the GEMINI_API_KEY environment variable
+    (loading backend/.env automatically if it's not already set -- see
+    common.py). Never hardcode API keys in source files or commit them to
+    version control. If a key has ever been pasted into a chat, a document,
+    or a public repo, treat it as compromised and rotate it immediately in
     Google AI Studio.
 """
 
@@ -37,6 +57,8 @@ import re
 import sys
 import urllib.error
 import urllib.request
+
+from common import get_gemini_api_key
 
 GEMINI_MODEL_DEFAULT = "gemini-2.5-flash"
 GEMINI_ENDPOINT_TEMPLATE = (
@@ -142,6 +164,54 @@ def load_existing(out_path: str) -> dict:
     return {"companies": []}
 
 
+def company_md_to_details(
+    markdown_path: str,
+    api_key: str = None,
+    model: str = GEMINI_MODEL_DEFAULT,
+) -> dict:
+    """Core library function: read one markdown profile, call Gemini, return
+    the extracted company record as a dict (does NOT write/append to any
+    output file -- that's what `run()` does). Raises FileNotFoundError /
+    RuntimeError on failure instead of calling sys.exit, so it's safe to
+    call from other code."""
+    if not os.path.exists(markdown_path):
+        raise FileNotFoundError(f"markdown file not found: {markdown_path}")
+
+    api_key = api_key or get_gemini_api_key()
+    markdown_text = read_markdown(markdown_path)
+    return call_gemini(markdown_text, api_key, model)
+
+
+def run(
+    markdown_paths,
+    out_path: str = "company_details.json",
+    api_key: str = None,
+    model: str = GEMINI_MODEL_DEFAULT,
+) -> dict:
+    """Library entry point mirroring the CLI: extract one or more markdown
+    profiles and append each to out_path's {"companies": [...]} list,
+    writing the result back to disk. Returns the final combined dict.
+
+    markdown_paths may be a single path (str) or an iterable of paths.
+    """
+    if isinstance(markdown_paths, (str, os.PathLike)):
+        markdown_paths = [markdown_paths]
+
+    api_key = api_key or get_gemini_api_key()
+    data = load_existing(out_path)
+
+    for markdown_path in markdown_paths:
+        print(f"Sending {markdown_path} to Gemini ({model}) for extraction...")
+        company_record = company_md_to_details(markdown_path, api_key=api_key, model=model)
+        data["companies"].append(company_record)
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    print(f"Wrote/updated {out_path} (now {len(data['companies'])} companies).")
+    return data
+
+
 def main():
     parser = argparse.ArgumentParser(description="Convert a company markdown profile into company_details.json format via Gemini.")
     parser.add_argument("markdown_path", help="Path to the input markdown file (e.g. company.md)")
@@ -149,31 +219,21 @@ def main():
     parser.add_argument("--model", default=GEMINI_MODEL_DEFAULT, help=f"Gemini model to use (default: {GEMINI_MODEL_DEFAULT})")
     args = parser.parse_args()
 
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        print(
-            "ERROR: set the GEMINI_API_KEY environment variable before running this script.\n"
-            "  export GEMINI_API_KEY=\"your-key-here\"",
-            file=sys.stderr,
-        )
+    try:
+        api_key = get_gemini_api_key()
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
     if not os.path.exists(args.markdown_path):
         print(f"ERROR: markdown file not found: {args.markdown_path}", file=sys.stderr)
         sys.exit(1)
 
-    markdown_text = read_markdown(args.markdown_path)
-
-    print(f"Sending {args.markdown_path} to Gemini ({args.model}) for extraction...")
-    company_record = call_gemini(markdown_text, api_key, args.model)
-
-    data = load_existing(args.out)
-    data["companies"].append(company_record)
-
-    with open(args.out, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-    print(f"Wrote/updated {args.out} (now {len(data['companies'])} companies).")
+    try:
+        run([args.markdown_path], out_path=args.out, api_key=api_key, model=args.model)
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

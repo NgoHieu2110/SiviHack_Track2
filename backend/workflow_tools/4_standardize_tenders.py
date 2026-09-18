@@ -8,6 +8,19 @@ fields, followed by a plain-text description body. Output is written to
 backend/standardized_tenders/<company_key>/<notice_id>.md (mirroring the
 input's per-company folder structure).
 
+Importable use:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "standardize_tenders", "4_standardize_tenders.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    mod.standardize_tenders(companies=["brenner_sohn_tiefbau"])
+
+(The leading digit means this file can't be imported with a plain `import
+4_standardize_tenders` statement -- see 1_company_md_to_company_details.py's
+docstring for why, and the same importlib pattern applies here.)
+
 HOW THIS WORKS
 ---------------
 The raw markdown fetch_tenders_oeffentlichevergabe.py writes always embeds
@@ -270,6 +283,55 @@ def process_company_folder(company_dir: Path, out_dir: Path) -> tuple:
     return ok, skipped
 
 
+def standardize_tenders(
+    input_dir: Path = DEFAULT_INPUT_DIR,
+    output_dir: Path = DEFAULT_OUTPUT_DIR,
+    companies: list = None,
+) -> dict:
+    """Library entry point mirroring the CLI: standardize every per-company
+    folder of raw tender markdown under input_dir into output_dir. Returns
+    a summary dict {"total_ok": int, "total_skipped": int, "companies":
+    {company_name: {"ok": int, "skipped": int, "output_dir": str}}}.
+
+    Raises FileNotFoundError / ValueError instead of calling sys.exit, so
+    it's safe to call from other code.
+    """
+    input_dir = Path(input_dir)
+    output_dir = Path(output_dir)
+
+    if not input_dir.exists():
+        raise FileNotFoundError(f"input dir not found: {input_dir}")
+
+    company_dirs = [d for d in sorted(input_dir.iterdir()) if d.is_dir()]
+    if companies:
+        company_dirs = [d for d in company_dirs if d.name in companies]
+        if not company_dirs:
+            raise ValueError(f"no matching company folders under {input_dir} for {companies}")
+
+    if not company_dirs:
+        raise ValueError(f"no company folders found under {input_dir}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"Input dir:  {input_dir}")
+    print(f"Output dir: {output_dir}\n")
+
+    total_ok, total_skipped = 0, 0
+    per_company = {}
+    for company_dir in company_dirs:
+        out_dir = output_dir / company_dir.name
+        print(f"{company_dir.name}:")
+        ok, skipped = process_company_folder(company_dir, out_dir)
+        total_ok += ok
+        total_skipped += skipped
+        per_company[company_dir.name] = {"ok": ok, "skipped": skipped, "output_dir": str(out_dir)}
+        print(f"  {ok} standardized, {skipped} skipped -> {out_dir}")
+
+    print(f"\nDone. {total_ok} standardized, {total_skipped} skipped across {len(company_dirs)} companies.")
+
+    return {"total_ok": total_ok, "total_skipped": total_skipped, "companies": per_company}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--input-dir", type=Path, default=DEFAULT_INPUT_DIR,
@@ -280,33 +342,10 @@ def main():
                          help="Restrict to specific company-folder names (default: all)")
     args = parser.parse_args()
 
-    if not args.input_dir.exists():
-        sys.exit(f"ERROR: input dir not found: {args.input_dir}")
-
-    company_dirs = [d for d in sorted(args.input_dir.iterdir()) if d.is_dir()]
-    if args.companies:
-        company_dirs = [d for d in company_dirs if d.name in args.companies]
-        if not company_dirs:
-            sys.exit(f"ERROR: no matching company folders under {args.input_dir} for {args.companies}")
-
-    if not company_dirs:
-        sys.exit(f"ERROR: no company folders found under {args.input_dir}")
-
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-
-    print(f"Input dir:  {args.input_dir}")
-    print(f"Output dir: {args.output_dir}\n")
-
-    total_ok, total_skipped = 0, 0
-    for company_dir in company_dirs:
-        out_dir = args.output_dir / company_dir.name
-        print(f"{company_dir.name}:")
-        ok, skipped = process_company_folder(company_dir, out_dir)
-        total_ok += ok
-        total_skipped += skipped
-        print(f"  {ok} standardized, {skipped} skipped -> {out_dir}")
-
-    print(f"\nDone. {total_ok} standardized, {total_skipped} skipped across {len(company_dirs)} companies.")
+    try:
+        standardize_tenders(input_dir=args.input_dir, output_dir=args.output_dir, companies=args.companies)
+    except (FileNotFoundError, ValueError) as e:
+        sys.exit(f"ERROR: {e}")
 
 
 if __name__ == "__main__":
