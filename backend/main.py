@@ -12,24 +12,24 @@ exactly the route defined below.
 
 WHAT /tenders/match DOES NOW
 -----------------------------
-POST /tenders/match no longer does a one-shot AI scoring pass against a
-pre-loaded corpus of tender markdown. Instead it runs the *entire* workflow
-pipeline live, for the single company profile just submitted, and streams
-progress back to the browser as Server-Sent Events (`text/event-stream`)
-over the same POST response body:
+This backend is configured for a single company -- there is no per-visitor
+company_key or live-search isolation. POST /tenders/match runs the *entire*
+workflow pipeline live, for the one company profile just submitted, and
+streams progress back to the browser as Server-Sent Events
+(`text/event-stream`) over the same POST response body:
 
-    1. Save the submitted profile into company_details.json, under an
-       auto-generated, ephemeral company name (the live form has no "company
-       name" field, and workflow_tools/*.py key everything off one) --
-       see 1_company_md_to_company_details.py's schema for context.
+    1. Overwrite company_details.json with the submitted profile (a single
+       flat object -- see 1_company_md_to_company_details.py's schema for
+       context). Submitting a new profile replaces whatever company was
+       there before.
     2. workflow_tools/2_company_details_to_initial_filter.py: ask Gemini to
-       turn that profile into a filters.yaml block (CPV/NUTS prefixes,
-       value range, exclusions, role hints).
+       turn that profile into filters.yaml (CPV/NUTS prefixes, value range,
+       exclusions, role hints).
     3. workflow_tools/3_run_filter_for_tenders.py: walk oeffentlichevergabe.de
        backward day by day until PIPELINE_TARGET_COUNT tenders match, or
        PIPELINE_MAX_DAYS_BACK is hit. This also updates
-       backend/tenders/<company_key>/index.json (priority bookkeeping --
-       see tender_index.py).
+       backend/tenders/index.json (priority bookkeeping -- see
+       tender_index.py).
     4. workflow_tools/5_select_tenders.py: pick PIPELINE_SELECT_COUNT of the
        highest-priority tenders from index.json and return each one's full
        raw markdown.
@@ -38,6 +38,11 @@ over the same POST response body:
     and 4_standardize_tenders.py have been removed. backend/tenders/ is now
     the only tender store, and what's sent to the frontend is each selected
     tender's raw .md content rather than a parsed/standardized JSON record.
+
+PIPELINE_LOCK serializes /tenders/match and /tenders/remove calls (see its
+own comment below) -- since there's only one shared company_details.json /
+filters.yaml / tenders/ store, concurrent submissions would otherwise step
+on each other's state rather than just being slow.
 
 Each SSE event is one line of JSON after "data: ":
     {"type": "progress", "stage": "...", "message": "..."}   (many)
@@ -50,10 +55,9 @@ it streams progress rather than returning a single blocking JSON response.
 
 Also exposes POST /admin/save-company-profile, which writes whatever
 CompanyProfile is POSTed to it into company_details.json directly, without
-running the rest of the pipeline -- useful for pre-registering real
-companies that a scheduled/batch run of workflow_tools 2-4 will pick up
-later, as opposed to the ephemeral live-search companies /tenders/match
-creates.
+running the rest of the pipeline -- useful for updating the company profile
+that a scheduled/batch run of workflow_tools 2-3-5 will pick up later,
+without immediately kicking off a live fetch.
 """
 
 from __future__ import annotations
@@ -63,10 +67,8 @@ import importlib.util
 import json
 import os
 import queue
-import re
 import sys
 import threading
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -95,7 +97,9 @@ from pydantic import BaseModel  # noqa: E402
 #       5_select_tenders.py
 #       tender_index.py
 #       company_details.json
-#     tenders/                     <- raw fetch output + per-company index.json
+#       filters.yaml
+#     tenders/                     <- raw fetch output + index.json
+#     tenders_seen/                <- dismissed tenders
 #
 # Every path is overridable via env var if your layout differs.
 # ---------------------------------------------------------------------------
@@ -106,6 +110,7 @@ FETCH_MODULE_PATH = Path(
     os.environ.get("FETCH_MODULE_PATH", BASE_DIR / "oeffentlichevergabe" / "fetch_tenders_oeffentlichevergabe.py")
 )
 COMPANY_DETAILS_PATH = Path(os.environ.get("COMPANY_DETAILS_PATH", WORKFLOW_TOOLS_DIR / "company_details.json"))
+FILTERS_PATH = Path(os.environ.get("FILTERS_PATH", WORKFLOW_TOOLS_DIR / "filters.yaml"))
 TENDERS_DIR = Path(os.environ.get("TENDERS_DIR", BASE_DIR / "tenders"))
 TENDERS_SEEN_DIR = Path(os.environ.get("TENDERS_SEEN_DIR", BASE_DIR / "tenders_seen"))
 
@@ -120,10 +125,10 @@ ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
-# How many tenders the fetch stage tries to collect before we randomly pick
+# How many tenders the fetch stage tries to collect before we pick
 # PIPELINE_SELECT_COUNT of them, how many days back it's allowed to walk to
 # get there, and how many we finally show. Kept small by default since this
-# now runs live, in the request path, for a single ephemeral company.
+# now runs live, in the request path.
 PIPELINE_TARGET_COUNT = int(os.environ.get("PIPELINE_TARGET_COUNT", "6"))
 PIPELINE_MAX_DAYS_BACK = int(os.environ.get("PIPELINE_MAX_DAYS_BACK", "60"))
 PIPELINE_SELECT_COUNT = int(os.environ.get("PIPELINE_SELECT_COUNT", "3"))
@@ -141,7 +146,9 @@ app.add_middleware(
 # external API concurrently -- stage output is captured by temporarily
 # redirecting the process's sys.stdout (see QueueWriter below), which is a
 # global, so two pipelines running at once would interleave/scramble each
-# other's progress messages.
+# other's progress messages. It also protects the single shared
+# company_details.json / filters.yaml / tenders/ store from being read and
+# written by two requests at once.
 PIPELINE_LOCK = threading.Lock()
 
 
@@ -173,42 +180,24 @@ select_module = load_module("select_tenders", SELECT_SCRIPT_PATH)
 remove_module = load_module("user_select_remove_tenders", REMOVE_SCRIPT_PATH)
 
 
-def slugify(name: str) -> str:
-    """Identical to fetch_tenders_oeffentlichevergabe.py's slugify(), so
-    company keys line up across every stage."""
-    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
-
-
 # ---------------------------------------------------------------------------
 # company_details.json persistence
 # ---------------------------------------------------------------------------
 
-def save_company_profile(profile: CompanyProfile) -> tuple[dict, int]:
-    """Append the submitted CompanyProfile to company_details.json, in the
-    same {"companies": [...]} shape 1_company_md_to_company_details.py
-    produces. Returns (saved_record, total_companies_in_file)."""
-    if COMPANY_DETAILS_PATH.exists():
-        try:
-            data = json.loads(COMPANY_DETAILS_PATH.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            data = {}
-    else:
-        data = {}
-
-    if "companies" not in data or not isinstance(data["companies"], list):
-        data["companies"] = []
-
+def save_company_profile(profile: CompanyProfile) -> dict:
+    """Writes the submitted CompanyProfile to company_details.json as a
+    single flat object, overwriting whatever was there before -- there is
+    only one company per backend instance, not a list. Returns the saved
+    record."""
     record = profile.model_dump()
     record["submittedAt"] = datetime.now(timezone.utc).isoformat()
 
-    data["companies"].append(record)
-
     COMPANY_DETAILS_PATH.parent.mkdir(parents=True, exist_ok=True)
     COMPANY_DETAILS_PATH.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+        json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
-    return record, len(data["companies"])
+    return record
 
 
 # ---------------------------------------------------------------------------
@@ -293,71 +282,50 @@ def build_match(tender_dict: dict, profile: CompanyProfile) -> dict:
 # The pipeline itself
 # ---------------------------------------------------------------------------
 
-def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> tuple[str, list[dict]]:
+def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> list[dict]:
     q.put({"type": "progress", "stage": "starting", "message": "Starting your tender search..."})
-
-    company_name = (
-        f"Web submission {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')} "
-        f"({uuid.uuid4().hex[:6]})"
-    )
-    company_key = slugify(company_name)
-
-    profile_data = profile.model_dump()
-    profile_data["name"] = company_name
-    enriched_profile = CompanyProfile(**profile_data)
 
     run_stage(
         q, "saving_profile", "Saving your company profile...",
-        save_company_profile, enriched_profile,
+        save_company_profile, profile,
     )
 
-    filters_path = WORKFLOW_TOOLS_DIR / f".web_filters_{company_key}.yaml"
+    run_stage(
+        q, "building_filter",
+        "Working out which tender categories and regions fit your company "
+        "(this calls Gemini and can take a moment)...",
+        filter_module.run,
+        input_path=str(COMPANY_DETAILS_PATH),
+        out_path=str(FILTERS_PATH),
+    )
+
+    run_stage(
+        q, "fetching_tenders",
+        f"Searching oeffentlichevergabe.de for matching tenders "
+        f"(up to {PIPELINE_MAX_DAYS_BACK} days back)...",
+        run_filter_module.run_filter_for_tenders,
+        filters_path=FILTERS_PATH,
+        fetch_module_path=FETCH_MODULE_PATH,
+        output_dir=TENDERS_DIR,
+        tenders_seen_dir=TENDERS_SEEN_DIR,
+        target=PIPELINE_TARGET_COUNT,
+        max_days=PIPELINE_MAX_DAYS_BACK,
+    )
+
+    q.put({"type": "progress", "stage": "selecting", "message": "Picking your top tenders..."})
     try:
-        run_stage(
-            q, "building_filter",
-            "Working out which tender categories and regions fit your company "
-            "(this calls Gemini and can take a moment)...",
-            filter_module.run,
-            input_path=str(COMPANY_DETAILS_PATH),
-            out_path=str(filters_path),
-            companies=[company_name],
+        selected = select_module.select_tenders(
+            count=PIPELINE_SELECT_COUNT,
+            tenders_dir=TENDERS_DIR,
         )
-
-        run_stage(
-            q, "fetching_tenders",
-            f"Searching oeffentlichevergabe.de for matching tenders "
-            f"(up to {PIPELINE_MAX_DAYS_BACK} days back)...",
-            run_filter_module.run_filter_for_tenders,
-            filters_path=filters_path,
-            company_details_path=COMPANY_DETAILS_PATH,
-            fetch_module_path=FETCH_MODULE_PATH,
-            output_dir=TENDERS_DIR,
-            target=PIPELINE_TARGET_COUNT,
-            max_days=PIPELINE_MAX_DAYS_BACK,
-            companies=[company_key],
-            force=True,  # single freshly-written ephemeral company; skip the batch cross-check
-        )
-
-        q.put({"type": "progress", "stage": "selecting", "message": "Picking your top tenders..."})
-        try:
-            selected = select_module.select_tenders(
-                company_key=company_key,
-                count=PIPELINE_SELECT_COUNT,
-                tenders_dir=TENDERS_DIR,
-            )
-        except (FileNotFoundError, ValueError) as e:
-            raise RuntimeError(
-                "No tenders matched your profile within the search window. "
-                "Try broadening your specifications or contract value range."
-            ) from e
-    finally:
-        filters_path.unlink(missing_ok=True)
+    except (FileNotFoundError, ValueError) as e:
+        raise RuntimeError(
+            "No tenders matched your profile within the search window. "
+            "Try broadening your specifications or contract value range."
+        ) from e
 
     q.put({"type": "progress", "stage": "done", "message": f"Found {len(selected)} tender(s)."})
-    # company_key is returned (and surfaced in the "done" SSE event below) so
-    # the frontend can pass it back into /tenders/remove later to dismiss one
-    # of these tenders -- see 6_user_select_remove_tenders.py.
-    return company_key, [build_match(t, profile) for t in selected]
+    return [build_match(t, profile) for t in selected]
 
 
 def pipeline_event_stream(profile: CompanyProfile):
@@ -367,7 +335,7 @@ def pipeline_event_stream(profile: CompanyProfile):
     def worker():
         try:
             with PIPELINE_LOCK:
-                result["company_key"], result["matches"] = run_pipeline(profile, q)
+                result["matches"] = run_pipeline(profile, q)
         except Exception as e:  # surfaced to the client as an error event, not a 500
             result["error"] = str(e)
         finally:
@@ -386,7 +354,6 @@ def pipeline_event_stream(profile: CompanyProfile):
     else:
         yield format_sse({
             "type": "done",
-            "companyKey": result.get("company_key"),
             "matches": result.get("matches", []),
         })
 
@@ -401,24 +368,24 @@ def pipeline_event_stream(profile: CompanyProfile):
 # ---------------------------------------------------------------------------
 
 class RemoveTenderRequest(BaseModel):
-    companyKey: str
-    noticeId: str
+    markdown: str  # full raw tender markdown, as returned by /tenders/match's
+                    # "matches"[i].tender.markdown -- notice_id is extracted
+                    # from it server-side, see 6_user_select_remove_tenders.py
 
 
 def run_remove_pipeline(req: RemoveTenderRequest, q: "queue.Queue") -> dict:
-    q.put({"type": "progress", "stage": "starting", "message": f"Removing tender {req.noticeId}..."})
+    q.put({"type": "progress", "stage": "starting", "message": "Removing tender..."})
     try:
         result = run_stage(
             q, "removing",
-            f"Moving {req.noticeId} out of your active tender list...",
+            "Moving this tender out of your active tender list...",
             remove_module.remove_tender,
-            company_key=req.companyKey,
-            notice_id=req.noticeId,
+            markdown=req.markdown,
             tenders_dir=TENDERS_DIR,
             tenders_seen_dir=TENDERS_SEEN_DIR,
         )
-    except FileNotFoundError as e:
-        raise RuntimeError(f"Could not remove tender {req.noticeId}: {e}") from e
+    except (FileNotFoundError, ValueError) as e:
+        raise RuntimeError(f"Could not remove tender: {e}") from e
     q.put({"type": "progress", "stage": "done", "message": "Tender removed."})
     return result
 
@@ -460,6 +427,7 @@ def health():
         "status": "ok",
         "companyDetailsPath": str(COMPANY_DETAILS_PATH.resolve()),
         "companyDetailsExists": COMPANY_DETAILS_PATH.exists(),
+        "filtersPath": str(FILTERS_PATH.resolve()),
         "tendersDir": str(TENDERS_DIR.resolve()),
         "tendersSeenDir": str(TENDERS_SEEN_DIR.resolve()),
         "pipeline": {
@@ -473,13 +441,13 @@ def health():
 @app.post("/admin/save-company-profile")
 def save_company_profile_route(profile: CompanyProfile):
     """Writes the submitted profile to company_details.json directly,
-    without running the rest of the pipeline -- for pre-registering real
-    companies ahead of a scheduled/batch workflow_tools run."""
-    record, total = save_company_profile(profile)
+    without running the rest of the pipeline -- for updating the company
+    profile ahead of a scheduled/batch workflow_tools run. Overwrites
+    whatever company profile was previously stored."""
+    record = save_company_profile(profile)
     return {
         "status": "saved",
         "path": str(COMPANY_DETAILS_PATH.resolve()),
-        "totalCompanies": total,
         "record": record,
     }
 
@@ -487,10 +455,10 @@ def save_company_profile_route(profile: CompanyProfile):
 @app.post("/tenders/match")
 def match_tenders_stream(profile: CompanyProfile):
     """Runs the full live pipeline for this profile and streams progress
-    back as Server-Sent Events, ending with one {"type": "done", "companyKey":
-    "...", "matches": [...]} event (or {"type": "error", ...} on failure).
-    Keep the companyKey -- it's what /tenders/remove needs to dismiss one
-    of these tenders later."""
+    back as Server-Sent Events, ending with one {"type": "done", "matches":
+    [...]} event (or {"type": "error", ...} on failure). Submitting a
+    profile overwrites the currently stored company_details.json/
+    filters.yaml -- this backend only ever tracks one company."""
     return StreamingResponse(
         pipeline_event_stream(profile),
         media_type="text/event-stream",
@@ -503,12 +471,13 @@ def match_tenders_stream(profile: CompanyProfile):
 
 @app.post("/tenders/remove")
 def remove_tender_stream(req: RemoveTenderRequest):
-    """Dismisses one tender (by companyKey + noticeId, from a prior
-    /tenders/match "done" event) and streams progress back as Server-Sent
-    Events, ending with one {"type": "done", "status": "removed" |
-    "already_removed", "companyKey": "...", "id": "..."} event (or
-    {"type": "error", ...} on failure -- e.g. an unknown companyKey/noticeId
-    pair)."""
+    """Dismisses one tender (by its full raw markdown, from a prior
+    /tenders/match "done" event's matches[i].tender.markdown) and streams
+    progress back as Server-Sent Events, ending with one {"type": "done",
+    "status": "removed" | "already_removed", "id": "..."} event (or
+    {"type": "error", ...} on failure -- e.g. unparseable markdown or an
+    unknown id). The notice_id is extracted from the markdown server-side,
+    not supplied by the caller -- see 6_user_select_remove_tenders.py."""
     return StreamingResponse(
         remove_event_stream(req),
         media_type="text/event-stream",

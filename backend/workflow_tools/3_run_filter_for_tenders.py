@@ -2,26 +2,25 @@
 backend/workflow_tools/3_run_filter_for_tenders.py
 
 Runs fetch_tenders_oeffentlichevergabe.py (backend/oeffentlichevergabe/) with
-a given filters.yaml, producing a set of per-company markdown files with the
-tenders that match the filters -- written to backend/tenders/<company_key>/
-regardless of where fetch_tenders_oeffentlichevergabe.py itself lives.
+a given filters.yaml, producing the set of markdown files for tenders that
+match the filters -- written to backend/tenders/ regardless of where
+fetch_tenders_oeffentlichevergabe.py itself lives.
 
-Before running, this script sanity-checks filters.yaml against
-company_details.json: every company key in filters.yaml must correspond to
-a company actually listed in company_details.json (matched via the same
-slugify() fetch_tenders_oeffentlichevergabe.py itself uses), so a stale or
-hand-edited filters.yaml can't silently run against a company that no
-longer exists in company_details.json. This is a validation-only use of
-company_details.json -- the fetch/filter logic itself is driven entirely by
-filters.yaml, exactly as before.
+After the fetch runs and before index.json is touched, this script also
+checks backend/tenders_seen/ and deletes any freshly-fetched .md file whose
+notice_id is already sitting there -- i.e. a tender the user already
+dismissed via 6_user_select_remove_tenders.py. This is a safety net on top
+of fetch_tenders_oeffentlichevergabe.py's own .seen_ids.txt (which is
+append-only and should already prevent this on its own); see
+drop_already_seen_tenders() below for when it actually matters.
 
-After the fetch runs, this script also updates backend/tenders/<company_key>/
-index.json for every company it just ran (via tender_index.sync_index_with_folder,
-see tender_index.py for the full rules): every tender still present on disk
-gets its priority bumped, newly-found tenders are added at priority 1, and
-tenders whose .md file no longer exists are dropped from the index. This is
-the only place index.json gets written from a fetch run; 5_select_tenders.py
-only reads it (and resets priority on the ones it picks).
+After that, this script updates backend/tenders/index.json (via
+tender_index.sync_index_with_folder, see tender_index.py for the full
+rules): every tender still present on disk gets its priority bumped,
+newly-found tenders are added at priority 1, and tenders whose .md file no
+longer exists are dropped from the index. This is the only place
+index.json gets written from a fetch run; 5_select_tenders.py only reads
+it (and resets priority on the ones it picks).
 
 Importable use:
     import importlib.util
@@ -43,19 +42,16 @@ Expected layout (paths default accordingly, all overridable via flags):
       workflow_tools/
         3_run_filter_for_tenders.py   <- this script
         filters.yaml                   <- from 2_company_details_to_initial_filter.py
-        company_details.json           <- from 1_company_md_to_company_details.py
-      tenders/                         <- output lands here, one folder per company
+      tenders/                         <- output lands here, one flat folder
 
 Usage:
     python 3_run_filter_for_tenders.py
     python 3_run_filter_for_tenders.py --target 40 --max-days 90
-    python 3_run_filter_for_tenders.py --companies brenner_sohn_tiefbau_gmbh
-    python 3_run_filter_for_tenders.py --filters other_filters.yaml --force
+    python 3_run_filter_for_tenders.py --filters other_filters.yaml
 """
 
 import argparse
 import importlib.util
-import json
 import sys
 from pathlib import Path
 
@@ -64,8 +60,8 @@ BACKEND_DIR = SCRIPT_DIR.parent
 
 DEFAULT_FETCH_MODULE_PATH = BACKEND_DIR / "oeffentlichevergabe" / "fetch_tenders_oeffentlichevergabe.py"
 DEFAULT_FILTERS_PATH = SCRIPT_DIR / "filters.yaml"
-DEFAULT_COMPANY_DETAILS_PATH = SCRIPT_DIR / "company_details.json"
 DEFAULT_OUTPUT_DIR = BACKEND_DIR / "tenders"
+DEFAULT_TENDERS_SEEN_DIR = BACKEND_DIR / "tenders_seen"
 
 DEFAULT_TARGET_COUNT = 15
 DEFAULT_MAX_DAYS_BACK = 90
@@ -87,7 +83,7 @@ def load_fetch_module(module_path: Path):
     except Exception as e:
         raise RuntimeError(f"failed to import {module_path}: {e}") from e
 
-    for attr in ("run", "load_companies", "slugify", "OUTPUT_ROOT"):
+    for attr in ("run", "load_filters", "OUTPUT_ROOT"):
         if not hasattr(module, attr):
             raise RuntimeError(
                 f"{module_path} is missing expected attribute '{attr}' -- "
@@ -109,71 +105,60 @@ def load_tender_index_module():
     return module
 
 
-def validate_filters_against_company_details(filters_companies: dict, company_details_path: Path, slugify) -> list:
-    """Every key in filters_companies (from filters.yaml) must correspond to
-    a company actually present in company_details.json. Returns a list of
-    hard-error strings (empty list = all good). Also prints soft warnings
-    for display_name mismatches, which don't block the run."""
-    if not company_details_path.exists():
-        return [f"company_details.json not found at {company_details_path}"]
+def drop_already_seen_tenders(output_dir: Path, tenders_seen_dir: Path) -> None:
+    """Safety net against re-adding a tender the user already dismissed.
 
-    with open(company_details_path, "r", encoding="utf-8") as f:
-        try:
-            data = json.load(f)
-        except json.JSONDecodeError as e:
-            return [f"could not parse {company_details_path} as JSON: {e}"]
+    fetch_tenders_oeffentlichevergabe.py's own .seen_ids.txt is supposed to
+    make this impossible on its own -- it's append-only and never cleared,
+    even once 6_user_select_remove_tenders.py moves a tender's .md out to
+    tenders_seen/ (see that script's docstring). This exists only in case
+    that guard is ever out of sync -- .seen_ids.txt deleted by hand, a file
+    dropped into tenders_seen/ some other way, or tender_index.mark_removed()
+    having failed for a given id (6_...py logs a warning but doesn't fail
+    the removal when that happens).
 
-    known_companies = data.get("companies", [])
-    if not known_companies:
-        return [f"{company_details_path} has no companies listed"]
+    Called after the fetch has already run and written this run's new .md
+    files, but before sync_index_with_folder() -- so anything deleted here
+    never makes it into index.json at all.
+    """
+    output_dir = Path(output_dir)
+    tenders_seen_dir = Path(tenders_seen_dir)
+    if not output_dir.exists() or not tenders_seen_dir.exists():
+        return
 
-    slug_to_name = {slugify(c.get("name", "")): c.get("name", "") for c in known_companies}
-
-    errors = []
-    for key, profile in filters_companies.items():
-        if key not in slug_to_name:
-            errors.append(
-                f"filters.yaml company '{key}' has no matching entry in "
-                f"{company_details_path.name} (known: {sorted(slug_to_name)})"
-            )
-            continue
-        display_name = profile.get("display_name", "")
-        real_name = slug_to_name[key]
-        if display_name and display_name != real_name:
-            print(
-                f"  WARNING: '{key}' display_name ({display_name!r}) does not exactly "
-                f"match company_details.json name ({real_name!r}) -- not blocking, "
-                f"just worth checking for drift."
-            )
-    return errors
+    already_seen_ids = {p.stem for p in tenders_seen_dir.glob("*.md")}
+    for md_path in output_dir.glob("*.md"):
+        if md_path.stem in already_seen_ids:
+            print(f"  dropping freshly-fetched {md_path.name} "
+                  f"-- already sitting in {tenders_seen_dir} (previously removed by the user)")
+            md_path.unlink()
 
 
 def run_filter_for_tenders(
     filters_path: Path = DEFAULT_FILTERS_PATH,
-    company_details_path: Path = DEFAULT_COMPANY_DETAILS_PATH,
     fetch_module_path: Path = DEFAULT_FETCH_MODULE_PATH,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
+    tenders_seen_dir: Path = DEFAULT_TENDERS_SEEN_DIR,
     target: int = DEFAULT_TARGET_COUNT,
     max_days: int = DEFAULT_MAX_DAYS_BACK,
-    companies: list = None,
-    force: bool = False,
 ):
-    """Library entry point mirroring the CLI: validate filters.yaml against
-    company_details.json, then run fetch_tenders_oeffentlichevergabe.py's
-    own run() against that filters.yaml. Raises FileNotFoundError /
-    RuntimeError / ValueError on failure instead of calling sys.exit.
+    """Library entry point mirroring the CLI: run
+    fetch_tenders_oeffentlichevergabe.py's own run() against filters.yaml,
+    drop anything that duplicates a previously-dismissed tender, then sync
+    index.json. Raises FileNotFoundError / RuntimeError / ValueError on
+    failure instead of calling sys.exit.
 
     All path arguments accept str or Path.
     """
     filters_path = Path(filters_path)
-    company_details_path = Path(company_details_path)
     fetch_module_path = Path(fetch_module_path)
     output_dir = Path(output_dir)
+    tenders_seen_dir = Path(tenders_seen_dir)
 
     print(f"Fetch module:      {fetch_module_path}")
     print(f"Filters:           {filters_path}")
-    print(f"Company details:   {company_details_path}")
     print(f"Output dir:        {output_dir}")
+    print(f"Tenders seen dir:  {tenders_seen_dir}")
     print()
 
     module = load_fetch_module(fetch_module_path)
@@ -181,27 +166,10 @@ def run_filter_for_tenders(
     if not filters_path.exists():
         raise FileNotFoundError(f"filters file not found: {filters_path}")
 
-    # load_companies() also enforces required fields (display_name,
-    # cpv_prefixes, nuts_prefixes), so a structurally broken filters.yaml
-    # fails here before we even get to the company_details.json check.
-    filters_companies = module.load_companies(filters_path)
-
-    print("Validating filters.yaml against company_details.json...")
-    errors = validate_filters_against_company_details(filters_companies, company_details_path, module.slugify)
-    if errors:
-        print("\nVALIDATION FAILED:")
-        for e in errors:
-            print(f"  - {e}")
-        if force:
-            print("\nforce=True given: continuing despite the above.\n")
-        else:
-            raise ValueError(
-                "Aborting before running the fetch. Fix filters.yaml / "
-                "company_details.json, or pass force=True to run anyway. "
-                "Errors: " + "; ".join(errors)
-            )
-    else:
-        print("  OK: every company in filters.yaml matches an entry in company_details.json.\n")
+    # load_filters() enforces required fields (display_name, cpv_prefixes,
+    # nuts_prefixes), so a structurally broken filters.yaml fails here
+    # before we even attempt the fetch.
+    module.load_filters(filters_path)
 
     # fetch_tenders_oeffentlichevergabe.py hardcodes its OUTPUT_ROOT relative
     # to its own script location; override it here so results land in
@@ -209,18 +177,16 @@ def run_filter_for_tenders(
     output_dir.mkdir(parents=True, exist_ok=True)
     module.OUTPUT_ROOT = output_dir
 
-    result = module.run(target, max_days, companies, filters_path)
+    result = module.run(target, max_days, filters_path)
 
-    # Bump/seed priority in index.json for every company this run touched.
-    keys_to_sync = companies if companies else list(filters_companies.keys())
+    print("\nChecking for tenders already dismissed (present in tenders_seen/)...")
+    drop_already_seen_tenders(output_dir, tenders_seen_dir)
+
+    # Bump/seed priority in index.json for this run.
     tender_index = load_tender_index_module()
     print("\nUpdating index.json...")
-    for key in keys_to_sync:
-        company_dir = output_dir / key
-        if not company_dir.exists():
-            continue
-        index_data = tender_index.sync_index_with_folder(company_dir)
-        print(f"  {key}: {len(index_data['tenders'])} tender(s) tracked in index.json")
+    index_data = tender_index.sync_index_with_folder(output_dir)
+    print(f"  {len(index_data['tenders'])} tender(s) tracked in index.json")
 
     return result
 
@@ -229,32 +195,27 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--filters", type=Path, default=DEFAULT_FILTERS_PATH,
                          help=f"Path to filters.yaml (default: {DEFAULT_FILTERS_PATH})")
-    parser.add_argument("--company-details", type=Path, default=DEFAULT_COMPANY_DETAILS_PATH,
-                         help=f"Path to company_details.json, used for validation only (default: {DEFAULT_COMPANY_DETAILS_PATH})")
     parser.add_argument("--fetch-module", type=Path, default=DEFAULT_FETCH_MODULE_PATH,
                          help=f"Path to fetch_tenders_oeffentlichevergabe.py (default: {DEFAULT_FETCH_MODULE_PATH})")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
                          help=f"Where matched tender markdown files are written (default: {DEFAULT_OUTPUT_DIR})")
+    parser.add_argument("--tenders-seen-dir", type=Path, default=DEFAULT_TENDERS_SEEN_DIR,
+                         help=f"Where 6_user_select_remove_tenders.py moves dismissed tenders "
+                              f"(checked so they don't get re-added; default: {DEFAULT_TENDERS_SEEN_DIR})")
     parser.add_argument("--target", type=int, default=DEFAULT_TARGET_COUNT,
-                         help=f"Number of matching tenders to collect per company (default: {DEFAULT_TARGET_COUNT})")
+                         help=f"Number of matching tenders to collect (default: {DEFAULT_TARGET_COUNT})")
     parser.add_argument("--max-days", type=int, default=DEFAULT_MAX_DAYS_BACK,
                          help=f"Safety cap on how many days to walk backward (default: {DEFAULT_MAX_DAYS_BACK})")
-    parser.add_argument("--companies", nargs="*", default=None,
-                         help="Restrict to specific company keys from filters.yaml (default: all)")
-    parser.add_argument("--force", action="store_true",
-                         help="Run even if the company_details.json validation finds mismatches")
     args = parser.parse_args()
 
     try:
         run_filter_for_tenders(
             filters_path=args.filters,
-            company_details_path=args.company_details,
             fetch_module_path=args.fetch_module,
             output_dir=args.output_dir,
+            tenders_seen_dir=args.tenders_seen_dir,
             target=args.target,
             max_days=args.max_days,
-            companies=args.companies,
-            force=args.force,
         )
     except (FileNotFoundError, RuntimeError, ValueError) as e:
         sys.exit(f"ERROR: {e}")

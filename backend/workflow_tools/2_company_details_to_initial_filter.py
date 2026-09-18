@@ -5,6 +5,17 @@ backend/workflow_tools/2_company_details_to_initial_filter.py
 Converts company_details.json (see 1_company_md_to_company_details.py) into
 an initial filters.yaml for fetch_tenders_oeffentlichevergabe.py.
 
+company_details.json holds a single flat company object (one company per
+backend instance, not a list) -- e.g.:
+
+    {
+      "name": "...", "description": "...", "does": "...",
+      "placeOfPerformance": "...", "contractValueMin": ..., ...
+    }
+
+and the filters.yaml this produces is likewise a single flat block of
+filter fields, with no company-key wrapper around it.
+
 Importable use:
     import importlib.util
     spec = importlib.util.spec_from_file_location(
@@ -30,7 +41,7 @@ WHY THIS IS HARD TO DO DETERMINISTICALLY
 Two of the required fields, cpv_prefixes and nuts_prefixes, require domain
 judgment ("road construction, sewers" -> which CPV prefixes; "Bavaria, 150km
 from Augsburg" -> which NUTS prefixes), so this script asks Gemini to do
-that mapping per company.
+that mapping.
 
 TOLERANCE / SOFTNESS
 ---------------------
@@ -69,11 +80,11 @@ interpolates between them for the requested tolerance.
 
 CACHING
 --------
-Gemini is called once per company; the raw ladder/anchor response is cached
-to --cache-path (default: .filter_ladders_cache.json, next to --out) keyed
-by company name. Re-running with different tolerance values re-uses the
-cache and needs no further API calls. Pass --refresh to force new calls
-(e.g. after company_details.json content changes).
+Gemini is called once; the raw ladder/anchor response is cached to
+--cache-path (default: .filter_ladders_cache.json, next to --out) keyed by
+company name. Re-running with different tolerance values re-uses the cache
+and needs no further API calls. Pass --refresh to force a new call (e.g.
+after company_details.json content changes).
 
 Usage:
     export GEMINI_API_KEY="your-key-here"   # or set it in backend/.env
@@ -225,11 +236,6 @@ def call_gemini(prompt: str, api_key: str, model: str) -> dict:
         raise RuntimeError(f"Could not parse JSON from Gemini output:\n{cleaned}") from e
 
 
-def slugify(name: str) -> str:
-    """Identical to fetch_tenders.py's slugify() so keys line up."""
-    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
-
-
 def build_prompt(company: dict) -> str:
     return PROMPT_TEMPLATE.format(
         nuts_reference=NUTS_REFERENCE,
@@ -296,65 +302,66 @@ def yaml_str(s: str) -> str:
     return f'"{escaped}"'
 
 
-def render_company_block(key: str, company: dict, ladders: dict, tol: dict) -> str:
+def render_filters_body(company: dict, ladders: dict, tol: dict) -> str:
+    """Renders the flat filters.yaml body -- top-level fields, no
+    company-key wrapper (there's only ever one company/profile)."""
     lines = []
-    lines.append(f"{key}:")
-    lines.append(f"  display_name: {yaml_str(company.get('name', key))}")
+    lines.append(f"display_name: {yaml_str(company.get('name', 'company'))}")
     lines.append("")
 
     cpv_codes, cpv_entries, cpv_step = resolve_code_list(ladders["cpv_ladder"], tol["cpv"])
-    lines.append(f"  # cpv_prefixes (tolerance={tol['cpv']:.2f}, snapped to step {cpv_step})")
-    lines.append("  cpv_prefixes:")
+    lines.append(f"# cpv_prefixes (tolerance={tol['cpv']:.2f}, snapped to step {cpv_step})")
+    lines.append("cpv_prefixes:")
     for e in cpv_entries:
-        lines.append(f"    - {yaml_str(e['code'])}  # {e.get('label', '')}")
+        lines.append(f"  - {yaml_str(e['code'])}  # {e.get('label', '')}")
     lines.append("")
 
     nuts_codes, nuts_entries, nuts_step = resolve_code_list(ladders["nuts_ladder"], tol["nuts"])
-    lines.append(f"  # nuts_prefixes (tolerance={tol['nuts']:.2f}, snapped to step {nuts_step})")
-    lines.append("  nuts_prefixes:")
+    lines.append(f"# nuts_prefixes (tolerance={tol['nuts']:.2f}, snapped to step {nuts_step})")
+    lines.append("nuts_prefixes:")
     for e in nuts_entries:
-        lines.append(f"    - {yaml_str(e['code'])}  # {e.get('label', '')}")
+        lines.append(f"  - {yaml_str(e['code'])}  # {e.get('label', '')}")
     lines.append("")
 
     vmin = lerp(ladders["value_min_tight"], ladders["value_min_loose"], tol["value"])
     vmax = lerp(ladders["value_max_tight"], ladders["value_max_loose"], tol["value"])
-    lines.append(f"  # value_min / value_max (tolerance={tol['value']:.2f}, interpolated between")
-    lines.append(f"  # tight [{ladders['value_min_tight']:,.0f}, {ladders['value_max_tight']:,.0f}] and")
-    lines.append(f"  # loose [{ladders['value_min_loose']:,.0f}, {ladders['value_max_loose']:,.0f}])")
-    lines.append(f"  value_min: {vmin:.0f}")
-    lines.append(f"  value_max: {vmax:.0f}")
+    lines.append(f"# value_min / value_max (tolerance={tol['value']:.2f}, interpolated between")
+    lines.append(f"# tight [{ladders['value_min_tight']:,.0f}, {ladders['value_max_tight']:,.0f}] and")
+    lines.append(f"# loose [{ladders['value_min_loose']:,.0f}, {ladders['value_max_loose']:,.0f}])")
+    lines.append(f"value_min: {vmin:.0f}")
+    lines.append(f"value_max: {vmax:.0f}")
     lines.append("")
 
     excl_list, excl_step = resolve_keyword_list(ladders["exclude_keywords_ladder"], tol["exclude"])
     warn = "  # NOTE: tolerance > 0 here means real stated exclusions are being dropped." if tol["exclude"] > 0 else ""
-    lines.append(f"  # exclude_keywords (tolerance={tol['exclude']:.2f}, snapped to step {excl_step}){warn}")
+    lines.append(f"# exclude_keywords (tolerance={tol['exclude']:.2f}, snapped to step {excl_step}){warn}")
     if excl_list:
-        lines.append("  exclude_keywords:")
+        lines.append("exclude_keywords:")
         for kw in excl_list:
-            lines.append(f"    - {yaml_str(kw)}")
+            lines.append(f"  - {yaml_str(kw)}")
     else:
-        lines.append("  exclude_keywords: []")
+        lines.append("exclude_keywords: []")
     lines.append("")
 
     role_list, role_step = resolve_keyword_list(ladders["role_hint_ladder"], tol["role_hint"])
-    lines.append(f"  # role_hint_reject (tolerance={tol['role_hint']:.2f}, snapped to step {role_step})")
+    lines.append(f"# role_hint_reject (tolerance={tol['role_hint']:.2f}, snapped to step {role_step})")
     if role_list:
-        lines.append("  role_hint_reject:")
+        lines.append("role_hint_reject:")
         for kw in role_list:
-            lines.append(f"    - {yaml_str(kw)}")
+            lines.append(f"  - {yaml_str(kw)}")
     else:
-        lines.append("  role_hint_reject: []")
+        lines.append("role_hint_reject: []")
     lines.append("")
 
-    lines.append("  # Newer optional fields (procurement_methods_allowed, min_bid_prep_days,")
-    lines.append("  # reject_reserved_participation, contract_starts_after/_before) are left")
-    lines.append("  # unset here -- company_details.json doesn't carry enough signal to set")
-    lines.append("  # them confidently. Uncomment and tune by hand once real match volume exists.")
-    lines.append("  # procurement_methods_allowed: [\"open\", \"restricted\"]")
-    lines.append("  # min_bid_prep_days: 10")
-    lines.append("  # reject_reserved_participation: false")
-    lines.append("  # contract_starts_after: null")
-    lines.append("  # contract_starts_before: null")
+    lines.append("# Newer optional fields (procurement_methods_allowed, min_bid_prep_days,")
+    lines.append("# reject_reserved_participation, contract_starts_after/_before) are left")
+    lines.append("# unset here -- company_details.json doesn't carry enough signal to set")
+    lines.append("# them confidently. Uncomment and tune by hand once real match volume exists.")
+    lines.append("# procurement_methods_allowed: [\"open\", \"restricted\"]")
+    lines.append("# min_bid_prep_days: 10")
+    lines.append("# reject_reserved_participation: false")
+    lines.append("# contract_starts_after: null")
+    lines.append("# contract_starts_before: null")
     lines.append("")
 
     notes = ladders.get("notes", "").strip()
@@ -363,7 +370,7 @@ def render_company_block(key: str, company: dict, ladders: dict, tol: dict) -> s
         f"value={tol['value']:.2f}, exclude={tol['exclude']:.2f}, role_hint={tol['role_hint']:.2f}]"
     )
     full_notes = f"{notes} {tol_summary}".strip()
-    lines.append(f"  notes: {yaml_str(full_notes)}")
+    lines.append(f"notes: {yaml_str(full_notes)}")
 
     return "\n".join(lines)
 
@@ -381,7 +388,7 @@ def render_header(tol_defaults: dict) -> str:
 # was produced at its own tolerance in [0.0, 1.0], the inverse of filter
 # strength (0.0 = strict/true to company_details.json, 1.0 = no filtering
 # on that criterion). Defaults used for this run unless overridden per
-# company/criterion:
+# criterion:
 #   cpv={tol_defaults['cpv']:.2f}  nuts={tol_defaults['nuts']:.2f}  value={tol_defaults['value']:.2f}  \
 exclude={tol_defaults['exclude']:.2f}  role_hint={tol_defaults['role_hint']:.2f}
 # NOTE: exclude_keywords represents genuine hard capability limits (things
@@ -419,44 +426,40 @@ def resolve_tolerances(
 
 
 def build_filters_yaml(
-    all_companies: list,
+    company: dict,
     tol_defaults: dict,
     api_key: str,
     model: str = GEMINI_MODEL_DEFAULT,
     cache_path: str = ".filter_ladders_cache.json",
     refresh: bool = False,
 ) -> str:
-    """Core library function: given already-loaded company dicts (as found
-    in company_details.json's "companies" list) and resolved tolerances,
-    call Gemini (with caching) as needed and return the full rendered
+    """Core library function: given the already-loaded company dict (the
+    single object from company_details.json) and resolved tolerances, call
+    Gemini (with caching) as needed and return the full rendered
     filters.yaml text. Does not touch --input/--out paths itself."""
     cache = {} if refresh else load_cache(cache_path)
 
-    blocks = []
-    for company in all_companies:
-        name = company.get("name", "unnamed")
-        key = slugify(name)
+    name = company.get("name", "unnamed")
 
-        if name in cache and not refresh:
-            print(f"{name}: using cached ladder ({cache_path})")
-            ladders = cache[name]
-        else:
-            print(f"{name}: calling Gemini ({model}) to build filter ladder...")
-            prompt = build_prompt(company)
-            ladders = call_gemini(prompt, api_key, model)
-            cache[name] = ladders
-            save_cache(cache_path, cache)
+    if name in cache and not refresh:
+        print(f"{name}: using cached ladder ({cache_path})")
+        ladders = cache[name]
+    else:
+        print(f"{name}: calling Gemini ({model}) to build filter ladder...")
+        prompt = build_prompt(company)
+        ladders = call_gemini(prompt, api_key, model)
+        cache[name] = ladders
+        save_cache(cache_path, cache)
 
-        validate_ladder(ladders["cpv_ladder"], f"{name} cpv_ladder", allow_empty_at_1_0_only=True)
-        validate_ladder(ladders["nuts_ladder"], f"{name} nuts_ladder", allow_empty_at_1_0_only=True)
-        validate_ladder(ladders["exclude_keywords_ladder"], f"{name} exclude_keywords_ladder", allow_empty_at_1_0_only=False)
-        validate_ladder(ladders["role_hint_ladder"], f"{name} role_hint_ladder", allow_empty_at_1_0_only=False)
+    validate_ladder(ladders["cpv_ladder"], f"{name} cpv_ladder", allow_empty_at_1_0_only=True)
+    validate_ladder(ladders["nuts_ladder"], f"{name} nuts_ladder", allow_empty_at_1_0_only=True)
+    validate_ladder(ladders["exclude_keywords_ladder"], f"{name} exclude_keywords_ladder", allow_empty_at_1_0_only=False)
+    validate_ladder(ladders["role_hint_ladder"], f"{name} role_hint_ladder", allow_empty_at_1_0_only=False)
 
-        block = render_company_block(key, company, ladders, tol_defaults)
-        blocks.append(block)
-        print(f"  -> resolved block for key '{key}'")
+    body = render_filters_body(company, ladders, tol_defaults)
+    print(f"  -> resolved filters.yaml body for '{name}'")
 
-    return render_header(tol_defaults) + "\n\n".join(blocks) + "\n"
+    return render_header(tol_defaults) + body + "\n"
 
 
 def run(
@@ -465,7 +468,6 @@ def run(
     model: str = GEMINI_MODEL_DEFAULT,
     cache_path: str = None,
     refresh: bool = False,
-    companies: list = None,
     tolerance: float = 0.5,
     tolerance_cpv: float = None,
     tolerance_nuts: float = None,
@@ -475,11 +477,9 @@ def run(
     api_key: str = None,
 ) -> str:
     """Library entry point mirroring the CLI end to end: load
-    company_details.json, resolve tolerances, call Gemini per company
-    (cached), write filters.yaml, and return its text.
-
-    `companies`, if given, restricts to company names containing any of
-    these substrings (case-insensitive), same as --companies on the CLI.
+    company_details.json (a single flat company object), resolve
+    tolerances, call Gemini (cached), write filters.yaml, and return its
+    text.
     """
     api_key = api_key or get_gemini_api_key()
 
@@ -492,30 +492,26 @@ def run(
         raise FileNotFoundError(f"input file not found: {input_path}")
 
     with open(input_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    all_companies = data.get("companies", [])
-    if not all_companies:
-        raise ValueError(f"no companies found in {input_path} (expected {{\"companies\": [...]}})")
-
-    if companies:
-        wanted = [c.lower() for c in companies]
-        all_companies = [c for c in all_companies if any(w in c.get("name", "").lower() for w in wanted)]
-        if not all_companies:
-            raise ValueError(f"no companies matched --companies filter {companies}")
+        company = json.load(f)
+    if not isinstance(company, dict) or not company:
+        raise ValueError(
+            f"{input_path} must contain a single company object "
+            f"(a flat JSON mapping of company detail fields, not a list)"
+        )
 
     resolved_cache_path = cache_path or os.path.join(
         os.path.dirname(os.path.abspath(out_path)) or ".", ".filter_ladders_cache.json"
     )
 
     output = build_filters_yaml(
-        all_companies, tol_defaults, api_key, model=model,
+        company, tol_defaults, api_key, model=model,
         cache_path=resolved_cache_path, refresh=refresh,
     )
 
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(output)
 
-    print(f"\nWrote {out_path} with {len(all_companies)} company block(s).")
+    print(f"\nWrote {out_path} for '{company.get('name', 'company')}'.")
     print(f"Ladder cache: {resolved_cache_path} (re-run with different --tolerance-* flags without re-calling Gemini)")
     return output
 
@@ -525,9 +521,8 @@ def main():
     parser.add_argument("--input", default="company_details.json", help="Path to company_details.json (default: company_details.json)")
     parser.add_argument("--out", default="filters.yaml", help="Output filters.yaml path (default: filters.yaml)")
     parser.add_argument("--model", default=GEMINI_MODEL_DEFAULT, help=f"Gemini model (default: {GEMINI_MODEL_DEFAULT})")
-    parser.add_argument("--cache-path", default=None, help="Cache file for raw Gemini ladders (default: .filter_ladders_cache.json next to --out)")
-    parser.add_argument("--refresh", action="store_true", help="Ignore cache and re-call Gemini for every company")
-    parser.add_argument("--companies", nargs="*", default=None, help="Restrict to company names containing these substrings (default: all)")
+    parser.add_argument("--cache-path", default=None, help="Cache file for the raw Gemini ladder (default: .filter_ladders_cache.json next to --out)")
+    parser.add_argument("--refresh", action="store_true", help="Ignore cache and re-call Gemini")
 
     parser.add_argument("--tolerance", type=float, default=0.5, help="Global default tolerance in [0,1] for any dial not set explicitly (default: 0.5)")
     parser.add_argument("--tolerance-cpv", type=float, default=None)
@@ -549,7 +544,6 @@ def main():
             model=args.model,
             cache_path=args.cache_path,
             refresh=args.refresh,
-            companies=args.companies,
             tolerance=args.tolerance,
             tolerance_cpv=args.tolerance_cpv,
             tolerance_nuts=args.tolerance_nuts,

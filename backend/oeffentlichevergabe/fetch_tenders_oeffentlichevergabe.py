@@ -2,32 +2,33 @@
 backend/oeffentlichevergabe/fetch_tenders_oeffentlichevergabe.py
 
 Fetch German public tenders from oeffentlichevergabe.de and sort them into
-per-company markdown files based on hard filters (CPV prefix, NUTS region,
-value range, exclusion keywords).
+markdown files based on hard filters (CPV prefix, NUTS region, value range,
+exclusion keywords).
 
 Filters are NOT hardcoded in this file. They live in filters.yaml (next to
 this script), which you edit directly (plain YAML, no Python) to fine-tune
-matching per company.
+matching. filters.yaml is now a single flat block of filter fields -- there
+is only ever one company/profile per backend instance, so there's no
+company-key wrapper around it.
 
-For each company block in filters.yaml, this walks backward day by day from
-yesterday until it has collected TARGET_COUNT *new* matching tenders (or
-hits MAX_DAYS_BACK), writing one markdown file per matching tender into:
+This walks backward day by day from yesterday until it has collected
+TARGET_COUNT *new* matching tenders (or hits MAX_DAYS_BACK), writing one
+markdown file per matching tender into:
 
-    tenders/<company_slug>/<notice_id>.md
+    tenders/<notice_id>.md
 
-Each run is INCREMENTAL, not a fresh wipe: a company's existing .md files
-and .seen_ids.txt tracker are kept, so previously matched tenders stay on
-disk and TARGET_COUNT new ones are added on top each time this runs. This
-is what lets 3_run_filter_for_tenders.py's index.json track a rising
-"priority" per tender across repeated runs. Re-running after loosening a
-filter will therefore accumulate matches over time rather than resetting;
-if a genuinely clean slate is needed, delete tenders/<company_slug>/
-yourself before running.
+Each run is INCREMENTAL, not a fresh wipe: the existing .md files and the
+.seen_ids.txt tracker (tenders/.seen_ids.txt) are kept, so previously
+matched tenders stay on disk and TARGET_COUNT new ones are added on top
+each time this runs. This is what lets 3_run_filter_for_tenders.py's
+index.json track a rising "priority" per tender across repeated runs.
+Re-running after loosening a filter will therefore accumulate matches over
+time rather than resetting; if a genuinely clean slate is needed, delete
+tenders/ yourself before running.
 
 Usage:
     python fetch_tenders_oeffentlichevergabe.py
     python fetch_tenders_oeffentlichevergabe.py --target 40 --max-days 90
-    python fetch_tenders_oeffentlichevergabe.py --companies brenner_sohn_tiefbau
     python fetch_tenders_oeffentlichevergabe.py --filters my_filters.yaml
 
 filters.yaml is resolved relative to this script's own location, so it works
@@ -39,6 +40,7 @@ import json
 import re
 import sys
 import zipfile
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -50,8 +52,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 OUTPUT_ROOT = SCRIPT_DIR / "tenders"
 DEFAULT_FILTERS_PATH = SCRIPT_DIR / "filters.yaml"
 
-DEFAULT_TARGET_COUNT = 10
-DEFAULT_MAX_DAYS_BACK = 90  # safety cap so a bad filter config can't loop forever
+DEFAULT_TARGET_COUNT = 7
+DEFAULT_MAX_DAYS_BACK = 60  # safety cap so a bad filter config can't loop forever
 
 REQUIRED_FIELDS = ["display_name", "cpv_prefixes", "nuts_prefixes"]
 
@@ -73,11 +75,13 @@ OPTIONAL_FIELD_DEFAULTS = {
 }
 
 
-def load_companies(filters_path: Path) -> dict:
-    """Load and lightly validate the company filter blocks from filters.yaml."""
+def load_filters(filters_path: Path) -> dict:
+    """Load and lightly validate the single flat filter profile from
+    filters.yaml (a plain mapping of filter fields, not wrapped in a
+    company-key block)."""
     if not filters_path.exists():
         sys.exit(f"Filter file not found: {filters_path}\n"
-                  f"Expected a YAML file with one block per company (see filters.yaml).")
+                  f"Expected a YAML file with the filter fields (see filters.yaml).")
 
     with open(filters_path, "r", encoding="utf-8") as f:
         try:
@@ -86,23 +90,17 @@ def load_companies(filters_path: Path) -> dict:
             sys.exit(f"Could not parse {filters_path} as YAML: {e}")
 
     if not isinstance(data, dict) or not data:
-        sys.exit(f"{filters_path} must contain at least one company block "
-                  f"(top-level YAML mapping of company_key -> filter fields).")
+        sys.exit(f"{filters_path} must contain a mapping of filter fields "
+                  f"(see filters.yaml).")
 
-    companies = {}
-    for key, profile in data.items():
-        if not isinstance(profile, dict):
-            sys.exit(f"Company '{key}' in {filters_path} must be a mapping, "
-                      f"got {type(profile).__name__}.")
-        missing = [f for f in REQUIRED_FIELDS if f not in profile or profile[f] in (None, [])]
-        if missing:
-            sys.exit(f"Company '{key}' in {filters_path} is missing required "
-                      f"field(s): {', '.join(missing)}")
-        for field, default in OPTIONAL_FIELD_DEFAULTS.items():
-            profile.setdefault(field, default)
-        companies[key] = profile
+    missing = [f for f in REQUIRED_FIELDS if f not in data or data[f] in (None, [])]
+    if missing:
+        sys.exit(f"{filters_path} is missing required field(s): {', '.join(missing)}")
 
-    return companies
+    for field, default in OPTIONAL_FIELD_DEFAULTS.items():
+        data.setdefault(field, default)
+
+    return data
 
 
 def slugify(name: str) -> str:
@@ -300,7 +298,7 @@ def matches_profile(release, profile):
 
     The five optional checks (procurement_methods_allowed, min_bid_prep_days,
     reject_reserved_participation, contract_starts_after/_before) are
-    LENIENT ON MISSING DATA: if a profile sets one of them but the
+    LENIENT ON MISSING DATA: if the profile sets one of them but the
     corresponding OCDS field isn't present on this particular release, that
     check is skipped (does not reject) rather than treated as a fail. This
     matches the reality that these fields are sparsely populated across
@@ -317,11 +315,11 @@ def matches_profile(release, profile):
     "bid prep window ...", "reserved participation present ...", "no lot
     contractPeriod.startDate within ..."). Right now that reason is only
     surfaced via the per-match print in run(); it is NOT currently tallied
-    anywhere. To diagnose which filter is actually starving a company for
-    matches, collect these reasons into a Counter (see the REASON_COUNTS
-    hook below) instead of just printing the accepted ones -- the rejection
-    reasons are more informative than the matches when a company's count is
-    stuck near zero.
+    anywhere. To diagnose which filter is actually starving matches,
+    collect these reasons into a Counter (see the DIAGNOSTIC HOOK in run())
+    instead of just printing the accepted ones -- the rejection reasons are
+    more informative than the matches when the match count is stuck near
+    zero.
     """
 
     text_blob = get_release_text_blob(release)
@@ -460,7 +458,7 @@ FIELDS_OF_INTEREST = [
 ]
 
 
-def render_markdown(release, company_key, profile, reason="match"):
+def render_markdown(release, profile, reason="match"):
     """Render the FULL release for a matched tender: a short "why this
     matched" summary, the field-inventory table (same as
     inspect_release.py, so you can see at a glance what else is populated
@@ -469,8 +467,8 @@ def render_markdown(release, company_key, profile, reason="match"):
     This intentionally mirrors inspect_release.py's render_markdown() so
     the two tools produce the same shape of document - the only difference
     is this one is written for every real match instead of one ad-hoc
-    sample, and it's prefixed with the match context (company, reason,
-    values fetch_tenders.py actually filtered on).
+    sample, and it's prefixed with the match context (reason, values
+    fetch_tenders.py actually filtered on).
     """
     tender = release.get("tender", {})
     buyer = release.get("buyer", {})
@@ -499,8 +497,8 @@ def render_markdown(release, company_key, profile, reason="match"):
     lines.append(f"**OCID:** {ocid}")
     lines.append("")
     lines.append(
-        f"_Matched against the `{company_key}` profile in filters.yaml "
-        f"({reason}). Notes: {profile.get('notes', '')}_"
+        f"_Matched against the filters.yaml profile ({reason}). "
+        f"Notes: {profile.get('notes', '')}_"
     )
     lines.append("")
 
@@ -556,71 +554,56 @@ def render_markdown(release, company_key, profile, reason="match"):
     return "\n".join(lines)
 
 
-def load_seen_ids(company_dir: Path) -> set:
-    seen_file = company_dir / ".seen_ids.txt"
+def load_seen_ids(tenders_dir: Path) -> set:
+    seen_file = tenders_dir / ".seen_ids.txt"
     if seen_file.exists():
         return set(seen_file.read_text(encoding="utf-8").splitlines())
     return set()
 
 
-def save_seen_id(company_dir: Path, notice_id: str):
-    seen_file = company_dir / ".seen_ids.txt"
+def save_seen_id(tenders_dir: Path, notice_id: str):
+    seen_file = tenders_dir / ".seen_ids.txt"
     with open(seen_file, "a", encoding="utf-8") as f:
         f.write(notice_id + "\n")
 
 
-def run(target_count: int, max_days_back: int, company_filter=None, filters_path: Path = DEFAULT_FILTERS_PATH):
+def run(target_count: int, max_days_back: int, filters_path: Path = DEFAULT_FILTERS_PATH):
     # DIAGNOSTIC HOOK (currently informational only, not wired into control
-    # flow): reject reasons per company, keyed on the leading phrase of the
-    # reason string returned by matches_profile() (e.g. "no CPV match",
+    # flow): reject reasons, keyed on the leading phrase of the reason
+    # string returned by matches_profile() (e.g. "no CPV match",
     # "no region match", "value ... below min ..." collapses to "value").
-    # Once there's a real need to diagnose why a company's count is stuck,
-    # call matches_profile() for every release (not just until a company's
-    # target is hit) and tally reason.split(" (")[0].split("'")[0] here per
-    # company key, then print reject_reason_counts[key].most_common() in the
-    # summary block below. Left as a plain dict-of-Counters stub so wiring
-    # it in later is a small, localized change rather than a rewrite.
-    from collections import Counter
-    reject_reason_counts = {}  # company_key -> Counter(reason_prefix -> count)
+    # Once there's a real need to diagnose why the match count is stuck,
+    # tally reason.split(" (")[0].split("'")[0] into reject_reason_counts
+    # for every release (not just until target is hit), then print
+    # reject_reason_counts.most_common() in the summary block below. Left
+    # as a plain Counter stub so wiring it in later is a small, localized
+    # change rather than a rewrite.
+    reject_reason_counts = Counter()
 
-    companies = load_companies(filters_path)
-    if company_filter:
-        companies = {k: v for k, v in companies.items() if k in company_filter}
-        missing = set(company_filter) - set(companies)
-        if missing:
-            print(f"Warning: unknown company keys ignored: {missing}")
+    profile = load_filters(filters_path)
 
-    OUTPUT_ROOT.mkdir(exist_ok=True)
+    OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
 
-    # Fresh run: wipe each company's existing output folder (old .md files
-    # and the .seen_ids.txt tracker) before collecting anything, so stale
-    # matches from a previous filters.yaml never linger alongside new ones.
-    state = {}
-    for key in companies:
-        company_dir = OUTPUT_ROOT / key
-        company_dir.mkdir(parents=True, exist_ok=True)
-        seen = load_seen_ids(company_dir)
-        state[key] = {
-            "dir": company_dir,
-            "seen": seen,  # carried over from previous runs -- no wipe
-            "count": 0,    # NEW matches found *this run*, not the folder total
-        }
-        reject_reason_counts[key] = Counter()
-        print(f"{companies[key]['display_name']}: {len(seen)} previously matched tender(s) on disk, "
-              f"collecting up to {target_count} new one(s) this run.")
+    # Incremental run: existing .md files and .seen_ids.txt are kept (never
+    # wiped), so previously matched tenders stay on disk and target_count
+    # new ones are added on top each time this runs.
+    seen = load_seen_ids(OUTPUT_ROOT)
+    count = 0  # NEW matches found *this run*, not the folder total
+
+    print(f"{profile['display_name']}: {len(seen)} previously matched tender(s) on disk, "
+          f"collecting up to {target_count} new one(s) this run.")
 
     day = datetime.now() - timedelta(days=1)
     days_walked = 0
 
     while days_walked < max_days_back:
-        remaining = {k for k in companies if state[k]["count"] < target_count}
-        if not remaining:
-            print("\nAll companies have reached their target count.")
+        if count >= target_count:
+            print("\nTarget count reached.")
             break
 
         pub_day = day.strftime("%Y-%m-%d")
         print(f"\n=== Day {days_walked + 1}: {pub_day} "
-              f"(still need: {', '.join(remaining)}) ===")
+              f"(still need: {target_count - count} more) ===")
 
         try:
             releases = list(fetch_day_releases(pub_day))
@@ -628,57 +611,51 @@ def run(target_count: int, max_days_back: int, company_filter=None, filters_path
             break
 
         for release, _fname in releases:
+            if count >= target_count:
+                break
             notice_id = release.get("id", "")
-            for key in remaining:
-                profile = companies[key]
-                st = state[key]
-                if notice_id in st["seen"]:
-                    continue
-                ok, reason = matches_profile(release, profile)
-                if not ok:
-                    # Cheap tally for later diagnosis -- see the
-                    # DIAGNOSTIC HOOK comment above run(). Not printed by
-                    # default; inspect reject_reason_counts[key] yourself
-                    # (e.g. in a debugger or by adding a print in the
-                    # summary block) when match volume looks off.
-                    reject_reason_counts[key][reason.split(" (")[0].split("'")[0]] += 1
-                if ok:
-                    md = render_markdown(release, key, profile, reason=reason)
-                    out_path = st["dir"] / f"{notice_id}.md"
-                    out_path.write_text(md, encoding="utf-8")
-                    st["seen"].add(notice_id)
-                    save_seen_id(st["dir"], notice_id)
-                    st["count"] += 1
-                    print(f"  [{key}] MATCH ({st['count']}/{target_count}): "
-                          f"{release.get('tender', {}).get('title', '')[:70]}")
-                    if st["count"] >= target_count:
-                        break  # this company is done; still check others below in outer loop
+            if notice_id in seen:
+                continue
+            ok, reason = matches_profile(release, profile)
+            if not ok:
+                # Cheap tally for later diagnosis -- see the DIAGNOSTIC
+                # HOOK comment above. Not printed by default; inspect
+                # reject_reason_counts yourself (e.g. in a debugger or by
+                # adding a print in the summary block) when match volume
+                # looks off.
+                reject_reason_counts[reason.split(" (")[0].split("'")[0]] += 1
+                continue
+
+            md = render_markdown(release, profile, reason=reason)
+            out_path = OUTPUT_ROOT / f"{notice_id}.md"
+            out_path.write_text(md, encoding="utf-8")
+            seen.add(notice_id)
+            save_seen_id(OUTPUT_ROOT, notice_id)
+            count += 1
+            print(f"  MATCH ({count}/{target_count}): "
+                  f"{release.get('tender', {}).get('title', '')[:70]}")
 
         day -= timedelta(days=1)
         days_walked += 1
 
     print("\n=== Summary ===")
-    for key, st in state.items():
-        print(f"{companies[key]['display_name']}: {st['count']}/{target_count} "
-              f"-> {st['dir']}")
-        if st["count"] < target_count:
-            print(f"  (Did not reach target within {days_walked} days walked back. "
-                  f"Consider loosening filters in filters.yaml or raising --max-days.)")
+    print(f"{profile['display_name']}: {count}/{target_count} -> {OUTPUT_ROOT}")
+    if count < target_count:
+        print(f"  (Did not reach target within {days_walked} days walked back. "
+              f"Consider loosening filters in filters.yaml or raising --max-days.)")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target", type=int, default=DEFAULT_TARGET_COUNT,
-                         help="Number of matching tenders to collect per company.")
+                         help="Number of matching tenders to collect.")
     parser.add_argument("--max-days", type=int, default=DEFAULT_MAX_DAYS_BACK,
                          help="Safety cap on how many days to walk backward.")
-    parser.add_argument("--companies", nargs="*", default=None,
-                         help="Restrict to specific company keys (default: all).")
     parser.add_argument("--filters", type=Path, default=DEFAULT_FILTERS_PATH,
                          help=f"Path to the YAML filter file (default: {DEFAULT_FILTERS_PATH}).")
     args = parser.parse_args()
 
-    run(args.target, args.max_days, args.companies, args.filters)
+    run(args.target, args.max_days, args.filters)
 
 
 if __name__ == "__main__":

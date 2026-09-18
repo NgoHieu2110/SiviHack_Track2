@@ -1,13 +1,12 @@
 """
 backend/workflow_tools/tender_index.py
 
-Shared helpers for reading/writing the per-company index.json that lives
-at backend/tenders/<company_key>/index.json, alongside that company's raw
-tender markdown files (<notice_id>.md, written by
-fetch_tenders_oeffentlichevergabe.py). This replaces
-4_standardize_tenders.py / backend/standardized_tenders/, which have been
-removed -- backend/tenders/ is now the only tender store, and the raw
-per-tender .md file is what gets sent to the frontend.
+Shared helpers for reading/writing the index.json that lives at
+backend/tenders/index.json, alongside the raw tender markdown files
+(<notice_id>.md, written by fetch_tenders_oeffentlichevergabe.py).
+backend/tenders/ is the only tender store for the one company this backend
+is configured for, and the raw per-tender .md file is what gets sent to
+the frontend.
 
 index.json shape:
 {
@@ -46,8 +45,8 @@ PRIORITY RULES (see conversation with the user for the source of these):
     reselected. Unlike the "file no longer on disk" case below, a removed
     tender's index entry is deliberately KEPT (not deleted) as a seen/
     rejected history, even though its .md file has moved out to
-    tenders_seen/<company_key>/ and is therefore no longer "on disk" from
-    this module's point of view.
+    tenders_seen/ and is therefore no longer "on disk" from this module's
+    point of view.
   - Any other index entry is dropped if its .md file is no longer present
     on disk (e.g. manually deleted, moved by something other than the
     removal flow above).
@@ -78,12 +77,12 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def index_path(company_dir) -> Path:
-    return Path(company_dir) / INDEX_FILENAME
+def index_path(tenders_dir) -> Path:
+    return Path(tenders_dir) / INDEX_FILENAME
 
 
-def load_index(company_dir) -> dict:
-    path = index_path(company_dir)
+def load_index(tenders_dir) -> dict:
+    path = index_path(tenders_dir)
     if not path.exists():
         return {"tenders": {}}
     try:
@@ -96,9 +95,9 @@ def load_index(company_dir) -> dict:
     return data
 
 
-def save_index(company_dir, data: dict) -> None:
+def save_index(tenders_dir, data: dict) -> None:
     data["updated_at"] = _now_iso()
-    index_path(company_dir).write_text(
+    index_path(tenders_dir).write_text(
         json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
@@ -142,20 +141,20 @@ def extract_metadata(release: dict) -> dict:
     }
 
 
-def sync_index_with_folder(company_dir) -> dict:
-    """Call after a fetch run for this company. Walks every <notice_id>.md
-    currently in company_dir and:
+def sync_index_with_folder(tenders_dir) -> dict:
+    """Call after a fetch run. Walks every <notice_id>.md currently in
+    tenders_dir and:
       - adds any notice_id not yet indexed, at priority=1
       - bumps priority by 1 for every notice_id already indexed
       - refreshes cached metadata + last_seen_run for all of them
       - drops index entries whose .md file is no longer present
     Saves and returns the updated index dict.
     """
-    company_dir = Path(company_dir)
-    data = load_index(company_dir)
+    tenders_dir = Path(tenders_dir)
+    data = load_index(tenders_dir)
     tenders = data["tenders"]
 
-    on_disk = {p.stem for p in company_dir.glob("*.md")}
+    on_disk = {p.stem for p in tenders_dir.glob("*.md")}
 
     # Drop stale entries (file was removed/moved outside the removal flow
     # below) -- but NEVER drop a `removed` entry just because its .md file
@@ -167,7 +166,7 @@ def sync_index_with_folder(company_dir) -> dict:
 
     now = _now_iso()
     for notice_id in sorted(on_disk):
-        md_path = company_dir / f"{notice_id}.md"
+        md_path = tenders_dir / f"{notice_id}.md"
         try:
             release = extract_release_json(md_path.read_text(encoding="utf-8"))
             metadata = extract_metadata(release)
@@ -190,16 +189,16 @@ def sync_index_with_folder(company_dir) -> dict:
                 **metadata,
             }
 
-    save_index(company_dir, data)
+    save_index(tenders_dir, data)
     return data
 
 
-def pick_top(company_dir, count: int) -> list:
+def pick_top(tenders_dir, count: int) -> list:
     """Up to `count` notice_ids, highest priority first, EXCLUDING anything
     marked removed (see mark_removed()). Ties are broken toward whichever
     has been selected least often, so a tender that's somehow tied at the
     top forever doesn't monopolize every selection."""
-    data = load_index(company_dir)
+    data = load_index(tenders_dir)
     candidates = [
         (notice_id, entry) for notice_id, entry in data["tenders"].items()
         if not entry.get("removed")
@@ -211,10 +210,10 @@ def pick_top(company_dir, count: int) -> list:
     return [notice_id for notice_id, _entry in ranked[:count]]
 
 
-def mark_selected(company_dir, notice_ids: list) -> None:
+def mark_selected(tenders_dir, notice_ids: list) -> None:
     """Call after 5_select_tenders.py picks. Bumps selected_count, stamps
     last_selected_at, and resets priority to 0 -- see module docstring."""
-    data = load_index(company_dir)
+    data = load_index(tenders_dir)
     tenders = data["tenders"]
     now = _now_iso()
     for notice_id in notice_ids:
@@ -223,25 +222,25 @@ def mark_selected(company_dir, notice_ids: list) -> None:
             entry["selected_count"] = entry.get("selected_count", 0) + 1
             entry["last_selected_at"] = now
             entry["priority"] = 0
-    save_index(company_dir, data)
+    save_index(tenders_dir, data)
 
 
-def mark_removed(company_dir, notice_id: str) -> None:
+def mark_removed(tenders_dir, notice_id: str) -> None:
     """Call after 6_user_select_remove_tenders.py moves a tender's .md file
-    out to tenders_seen/<company_key>/. Marks the index entry removed
-    (kept, not deleted -- see module docstring) and floors its priority so
-    pick_top() never surfaces it again even as a fallback.
+    out to tenders_seen/. Marks the index entry removed (kept, not deleted
+    -- see module docstring) and floors its priority so pick_top() never
+    surfaces it again even as a fallback.
 
     Raises KeyError if notice_id isn't in the index at all (the caller is
     expected to have already confirmed the tender existed before moving
     its file).
     """
-    data = load_index(company_dir)
+    data = load_index(tenders_dir)
     tenders = data["tenders"]
     if notice_id not in tenders:
-        raise KeyError(f"'{notice_id}' not found in index.json for {company_dir}")
+        raise KeyError(f"'{notice_id}' not found in index.json for {tenders_dir}")
     entry = tenders[notice_id]
     entry["removed"] = True
     entry["removed_at"] = _now_iso()
     entry["priority"] = REMOVED_PRIORITY
-    save_index(company_dir, data)
+    save_index(tenders_dir, data)
