@@ -1,488 +1,585 @@
+#!/usr/bin/env python3
 """
-FastAPI backend for tender matching.
+backend/workflow_tools/2_company_details_to_initial_filter.py
 
-Run with:
-    uvicorn main:app --reload --port 8000
+Converts company_details.json (see 1_company_md_to_company_details.py) into
+an initial filters.yaml for fetch_tenders_oeffentlichevergabe.py.
 
-Then in your Next.js frontend .env.local:
-    NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+company_details.json holds a single flat company object (one company per
+backend instance, not a list) -- e.g.:
 
-The frontend's api.ts posts to `${API_BASE_URL}/tenders/match` -- that's
-exactly the route defined below.
+    {
+      "name": "...", "description": "...", "does": "...",
+      "placeOfPerformance": "...", "contractValueMin": ..., ...
+    }
 
-WHAT /tenders/match DOES NOW
------------------------------
-This backend is configured for a single company -- there is no per-visitor
-company_key or live-search isolation. POST /tenders/match runs the *entire*
-workflow pipeline live, for the one company profile just submitted, and
-streams progress back to the browser as Server-Sent Events
-(`text/event-stream`) over the same POST response body:
+and the filters.yaml this produces is likewise a single flat block of
+filter fields, with no company-key wrapper around it.
 
-    1. Overwrite company_details.json with the submitted profile (a single
-       flat object -- see 1_company_md_to_company_details.py's schema for
-       context). Submitting a new profile replaces whatever company was
-       there before.
-    2. workflow_tools/2_company_details_to_initial_filter.py: ask Gemini to
-       turn that profile into filters.yaml (CPV/NUTS prefixes, value range,
-       exclusions, role hints).
-    3. workflow_tools/3_run_filter_for_tenders.py: walk oeffentlichevergabe.de
-       backward day by day until PIPELINE_TARGET_COUNT tenders match, or
-       PIPELINE_MAX_DAYS_BACK is hit. This also updates
-       backend/tenders/index.json (priority bookkeeping -- see
-       tender_index.py).
-    4. workflow_tools/5_select_tenders.py: pick PIPELINE_SELECT_COUNT of the
-       highest-priority tenders from index.json and return each one's full
-       raw markdown.
+Importable use:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "details_to_filter", "2_company_details_to_initial_filter.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
 
-    There is no more standardization stage -- backend/standardized_tenders/
-    and 4_standardize_tenders.py have been removed. backend/tenders/ is now
-    the only tender store, and what's sent to the frontend is each selected
-    tender's raw .md content rather than a parsed/standardized JSON record.
+    output_text = mod.run(
+        input_path="company_details.json",
+        out_path="filters.yaml",
+        tolerance=0.3,
+        tolerance_exclude=0.0,
+        tolerance_role_hint=0.7,
+    )
 
-PIPELINE_LOCK serializes /tenders/match and /tenders/remove calls (see its
-own comment below) -- since there's only one shared company_details.json /
-filters.yaml / tenders/ store, concurrent submissions would otherwise step
-on each other's state rather than just being slow.
+(The leading digit means this file can't be imported with a plain
+`import 2_company_details_to_initial_filter` statement -- see
+1_company_md_to_company_details.py's docstring for why, and the same
+importlib pattern applies here.)
 
-Each SSE event is one line of JSON after "data: ":
-    {"type": "progress", "stage": "...", "message": "..."}   (many)
-    {"type": "done", "matches": [...]}                         (one, on success)
-    {"type": "error", "message": "..."}                        (one, on failure)
+WHY THIS IS HARD TO DO DETERMINISTICALLY
+-----------------------------------------
+Two of the required fields, cpv_prefixes and nuts_prefixes, require domain
+judgment ("road construction, sewers" -> which CPV prefixes; "Bavaria, 150km
+from Augsburg" -> which NUTS prefixes), so this script asks Gemini to do
+that mapping.
 
-This is a genuinely slow, external-API-bound operation (a Gemini call plus
-however many days of oeffentlichevergabe.de fetches it takes), which is why
-it streams progress rather than returning a single blocking JSON response.
+TOLERANCE / SOFTNESS
+---------------------
+Every tunable filter criterion has its own tolerance dial in [0.0, 1.0],
+which is the INVERSE of filter strength:
+    tolerance 0.0  -> as strict/true to company_details.json as possible
+    tolerance 1.0  -> essentially no filtering on that criterion
+Five independently settable dials:
+    --tolerance-cpv         (default: --tolerance)
+    --tolerance-nuts        (default: --tolerance)
+    --tolerance-value       (default: --tolerance)
+    --tolerance-exclude     (default: --tolerance)   ! see warning below
+    --tolerance-role-hint   (default: --tolerance)
+--tolerance sets the fallback used for any dial not given explicitly
+(default 0.5).
 
-Also exposes POST /admin/save-company-profile, which writes whatever
-CompanyProfile is POSTed to it into company_details.json directly, without
-running the rest of the pipeline -- useful for updating the company profile
-that a scheduled/batch run of workflow_tools 2-3-5 will pick up later,
-without immediately kicking off a live fetch.
+The five resolved dial values are written into filters.yaml itself as a
+real `tolerance:` field (not just the header comment), so downstream
+scripts (fetch_tenders_oeffentlichevergabe.py, 8_change_filter_tolerance.py)
+can read back exactly what tolerance produced a given filter run.
+
+! exclude_keywords represents genuine hard capability limits (e.g. "no rail
+  work", "no high voltage") stated directly in company_details.json's
+  "exclusions" field, not soft preferences. Softening it (tolerance > 0)
+  will let tenders through that the company explicitly said it cannot do.
+  It has a dial because every criterion should have one, but 0.0 is the
+  recommended value for it unless you have a specific reason to loosen it.
+
+HOW EACH DIAL IS APPLIED
+--------------------------
+cpv_prefixes, nuts_prefixes, role_hint_reject, exclude_keywords are "is this
+code/phrase in or out" filters, so Gemini generates a LADDER: a concrete
+list at each of six tolerance steps (0.0, 0.2, 0.4, 0.6, 0.8, 1.0). The
+requested tolerance is snapped to the nearest step and that step's list is
+used as-is.
+
+value_min / value_max are continuous, so Gemini instead gives a "tight"
+anchor (~tolerance 0.0, the company's real stated band) and a "loose" anchor
+(~tolerance 1.0, effectively unbounded), and this script linearly
+interpolates between them for the requested tolerance.
+
+CACHING
+--------
+Gemini is called once; the raw ladder/anchor response is cached to
+--cache-path (default: .filter_ladders_cache.json, next to --out) keyed by
+company name. Re-running with different tolerance values re-uses the cache
+and needs no further API calls. Pass --refresh to force a new call (e.g.
+after company_details.json content changes).
+
+Usage:
+    export GEMINI_API_KEY="your-key-here"   # or set it in backend/.env
+    python 2_company_details_to_initial_filter.py \
+        --input company_details.json --out filters.yaml \
+        --tolerance 0.3 --tolerance-exclude 0.0 --tolerance-role-hint 0.7
 """
 
-from __future__ import annotations
-
-import contextlib
-import importlib.util
+import argparse
 import json
 import os
-import queue
+import re
 import sys
-import threading
-from datetime import datetime, timezone
-from pathlib import Path
+import urllib.error
+import urllib.request
 
-from dotenv import load_dotenv
+from common import get_gemini_api_key
 
-load_dotenv()
-
-from fastapi import FastAPI, HTTPException  # noqa: E402
-from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
-from fastapi.responses import StreamingResponse  # noqa: E402
-
-from models import CompanyProfile  # noqa: E402
-from pydantic import BaseModel  # noqa: E402
-
-# ---------------------------------------------------------------------------
-# Paths. Defaults assume the layout documented in 3_run_filter_for_tenders.py:
-#
-#   backend/
-#     main.py                      <- this file
-#     oeffentlichevergabe/
-#       fetch_tenders_oeffentlichevergabe.py
-#     workflow_tools/
-#       1_company_md_to_company_details.py
-#       2_company_details_to_initial_filter.py
-#       3_run_filter_for_tenders.py
-#       5_select_tenders.py
-#       tender_index.py
-#       company_details.json
-#       filters.yaml
-#     tenders/                     <- raw fetch output + index.json
-#     tenders_seen/                <- dismissed tenders
-#
-# Every path is overridable via env var if your layout differs.
-# ---------------------------------------------------------------------------
-
-BASE_DIR = Path(__file__).resolve().parent
-WORKFLOW_TOOLS_DIR = Path(os.environ.get("WORKFLOW_TOOLS_DIR", BASE_DIR / "workflow_tools"))
-FETCH_MODULE_PATH = Path(
-    os.environ.get("FETCH_MODULE_PATH", BASE_DIR / "oeffentlichevergabe" / "fetch_tenders_oeffentlichevergabe.py")
-)
-COMPANY_DETAILS_PATH = Path(os.environ.get("COMPANY_DETAILS_PATH", WORKFLOW_TOOLS_DIR / "company_details.json"))
-FILTERS_PATH = Path(os.environ.get("FILTERS_PATH", WORKFLOW_TOOLS_DIR / "filters.yaml"))
-TENDERS_DIR = Path(os.environ.get("TENDERS_DIR", BASE_DIR / "tenders"))
-TENDERS_SEEN_DIR = Path(os.environ.get("TENDERS_SEEN_DIR", BASE_DIR / "tenders_seen"))
-
-FILTER_SCRIPT_PATH = Path(os.environ.get("FILTER_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "2_company_details_to_initial_filter.py"))
-FETCH_FILTER_RUNNER_PATH = Path(os.environ.get("FETCH_FILTER_RUNNER_PATH", WORKFLOW_TOOLS_DIR / "3_run_filter_for_tenders.py"))
-SELECT_SCRIPT_PATH = Path(os.environ.get("SELECT_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "5_select_tenders.py"))
-REMOVE_SCRIPT_PATH = Path(os.environ.get("REMOVE_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "6_user_select_remove_tenders.py"))
-
-ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
-    if origin.strip()
-]
-
-# How many tenders the fetch stage tries to collect before we pick
-# PIPELINE_SELECT_COUNT of them, how many days back it's allowed to walk to
-# get there, and how many we finally show. Kept small by default since this
-# now runs live, in the request path.
-PIPELINE_TARGET_COUNT = int(os.environ.get("PIPELINE_TARGET_COUNT", "6"))
-PIPELINE_MAX_DAYS_BACK = int(os.environ.get("PIPELINE_MAX_DAYS_BACK", "60"))
-PIPELINE_SELECT_COUNT = int(os.environ.get("PIPELINE_SELECT_COUNT", "3"))
-
-app = FastAPI(title="Tender Matching API")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_methods=["*"],
-    allow_headers=["*"],
+GEMINI_MODEL_DEFAULT = "gemini-3.6-flash"
+GEMINI_ENDPOINT_TEMPLATE = (
+    "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 )
 
-# Only one pipeline run at a time. This isn't just about not hammering the
-# external API concurrently -- stage output is captured by temporarily
-# redirecting the process's sys.stdout (see QueueWriter below), which is a
-# global, so two pipelines running at once would interleave/scramble each
-# other's progress messages. It also protects the single shared
-# company_details.json / filters.yaml / tenders/ store from being read and
-# written by two requests at once.
-PIPELINE_LOCK = threading.Lock()
+TOLERANCE_STEPS = ["0.0", "0.2", "0.4", "0.6", "0.8", "1.0"]
+
+NUTS_REFERENCE = """\
+NUTS reference for Germany (use these top-level codes, or a longer/more
+specific sub-code such as DE21 or DE27 for a tighter regional fit):
+  DE1 Baden-Wuerttemberg   DE6 Hamburg
+  DE2 Bayern               DE7 Hessen
+  DE3 Berlin               DE8 Mecklenburg-Vorpommern
+  DE4 Brandenburg          DE9 Niedersachsen
+  DE5 Bremen               DEA Nordrhein-Westfalen
+  DEB Rheinland-Pfalz      DEC Saarland
+  DED Sachsen              DEE Sachsen-Anhalt
+  DEF Schleswig-Holstein   DEG Thueringen
+"""
+
+PROMPT_TEMPLATE = """\
+You are helping configure a German public-tender matching filter for a
+construction/engineering company. Use CPV codes (EU Common Procurement
+Vocabulary, https://simap.ted.europa.eu/cpv) and NUTS region codes.
+
+{nuts_reference}
+
+COMPANY PROFILE:
+  Name: {name}
+  Short tag: {description}
+  What they do: {does}
+  Place of performance / operating area: {place_of_performance}
+  Stated minimum viable contract value (EUR): {value_min}
+  Stated maximum they could handle (EUR): {value_max}
+  Stated exclusions (things they CANNOT or WILL NOT do): {exclusions}
+  Other specifications (financial limits, capacity, reference projects,
+  quotes about what kind of work fits them): {specifications}
+
+Return ONLY a single JSON object (no markdown fences, no commentary) with
+exactly this shape:
+
+{{
+  "cpv_ladder": {{
+    "0.0": [{{"code": "CPV_PREFIX", "label": "short description"}}, ...],
+    "0.2": [...], "0.4": [...], "0.6": [...], "0.8": [...], "1.0": [...]
+  }},
+  "nuts_ladder": {{
+    "0.0": [{{"code": "NUTS_PREFIX", "label": "short description"}}, ...],
+    "0.2": [...], "0.4": [...], "0.6": [...], "0.8": [...], "1.0": [...]
+  }},
+  "exclude_keywords_ladder": {{
+    "0.0": ["keyword1", "keyword2", ...],
+    "0.2": [...], "0.4": [...], "0.6": [...], "0.8": [...], "1.0": []
+  }},
+  "role_hint_ladder": {{
+    "0.0": ["phrase1", "phrase2", ...],
+    "0.2": [...], "0.4": [...], "0.6": [...], "0.8": [...], "1.0": []
+  }},
+  "value_min_tight": number,
+  "value_min_loose": number,
+  "value_max_tight": number,
+  "value_max_loose": number,
+  "notes": "one or two sentence summary of this company for a human reading the filter file"
+}}
+
+LADDER RULES (apply the same logic to cpv_ladder, nuts_ladder,
+exclude_keywords_ladder, and role_hint_ladder):
+- "0.0" is the strictest / narrowest list: only codes or keywords that are
+  clearly, directly justified by the profile above.
+- "1.0" is always an empty list [] (no filtering at all on that criterion).
+- Steps in between progressively broaden: 0.2 adds a little breadth beyond
+  0.0, 0.4 more, etc., ending at the empty list by 1.0. Each step's list
+  should be a superset-ish broadening of the previous step's intent (for
+  keyword ladders specifically: keywords should tend to DISAPPEAR as the
+  step number rises, since removing an exclude/role-hint keyword is what
+  "loosening" means for those two ladders specifically -- so for
+  exclude_keywords_ladder and role_hint_ladder, treat 0.0 as the FULL list
+  of everything justified by "exclusions"/quotes in the profile, and each
+  higher step as progressively dropping the weakest/most speculative
+  entries, down to [] at 1.0).
+- For cpv_ladder and nuts_ladder, broadening means using shorter/broader
+  prefixes or adding adjacent/parent categories at higher steps (e.g. a
+  specific 6-digit CPV code at 0.0 might broaden to its 3-digit parent
+  prefix by 0.6), NOT dropping entries -- since these are membership tests
+  where broader prefixes match MORE tenders, which is what "loosening"
+  means for CPV/NUTS specifically.
+- Every step 0.0 through 0.8 for cpv_ladder and nuts_ladder must be
+  non-empty (a tender can't match an empty CPV or region list at all).
+
+NUMERIC RULES:
+- value_min_tight / value_max_tight should reflect the company's stated
+  min/max as closely as the profile allows.
+- value_min_loose should be a small number close to 0 (e.g. 0 or a token
+  minimum).
+- value_max_loose should be a very large number effectively removing the
+  ceiling (e.g. 10x-50x the stated max, or higher for very small companies).
+
+Return raw JSON only.
+"""
 
 
-# ---------------------------------------------------------------------------
-# Loading the numbered workflow_tools scripts. Their filenames start with a
-# digit, so they can't be `import`-ed normally -- same importlib pattern
-# those scripts already use internally to load each other.
-# ---------------------------------------------------------------------------
+def call_gemini(prompt: str, api_key: str, model: str) -> dict:
+    url = GEMINI_ENDPOINT_TEMPLATE.format(model=model)
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"},
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Gemini API error {e.code}: {e.read().decode('utf-8', errors='replace')}") from e
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Could not reach Gemini API: {e}") from e
 
-def load_module(name: str, path: Path):
-    path = Path(path)
-    if not path.exists():
-        raise FileNotFoundError(f"required workflow script not found: {path}")
-    # 2_company_details_to_initial_filter.py does `from common import
-    # get_gemini_api_key`, a plain top-level import that only resolves if
-    # its own folder is on sys.path.
-    workflow_dir = str(path.parent)
-    if workflow_dir not in sys.path:
-        sys.path.insert(0, workflow_dir)
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    try:
+        text = body["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError) as e:
+        raise RuntimeError(f"Unexpected Gemini response shape: {json.dumps(body)[:500]}") from e
+
+    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip())
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Could not parse JSON from Gemini output:\n{cleaned}") from e
 
 
-filter_module = load_module("details_to_filter", FILTER_SCRIPT_PATH)
-run_filter_module = load_module("run_filter_for_tenders", FETCH_FILTER_RUNNER_PATH)
-select_module = load_module("select_tenders", SELECT_SCRIPT_PATH)
-remove_module = load_module("user_select_remove_tenders", REMOVE_SCRIPT_PATH)
-
-
-# ---------------------------------------------------------------------------
-# company_details.json persistence
-# ---------------------------------------------------------------------------
-
-def save_company_profile(profile: CompanyProfile) -> dict:
-    """Writes the submitted CompanyProfile to company_details.json as a
-    single flat object, overwriting whatever was there before -- there is
-    only one company per backend instance, not a list. Returns the saved
-    record."""
-    record = profile.model_dump()
-    record["submittedAt"] = datetime.now(timezone.utc).isoformat()
-
-    COMPANY_DETAILS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    COMPANY_DETAILS_PATH.write_text(
-        json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8"
+def build_prompt(company: dict) -> str:
+    return PROMPT_TEMPLATE.format(
+        nuts_reference=NUTS_REFERENCE,
+        name=company.get("name", ""),
+        description=company.get("description", company.get("contractNature", "")),
+        does=company.get("does", ""),
+        place_of_performance=company.get("placeOfPerformance", ""),
+        value_min=company.get("contractValueMin", "unknown"),
+        value_max=company.get("contractValueMax", "unknown"),
+        exclusions=company.get("exclusions", ""),
+        specifications=company.get("specifications", ""),
     )
 
-    return record
+
+def load_cache(cache_path: str) -> dict:
+    if os.path.exists(cache_path):
+        with open(cache_path, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {}
+    return {}
 
 
-# ---------------------------------------------------------------------------
-# Progress streaming plumbing
-# ---------------------------------------------------------------------------
-
-class QueueWriter:
-    """File-like object that forwards written lines to a queue.Queue as SSE
-    progress events. Used via contextlib.redirect_stdout to capture the
-    workflow scripts' existing print() calls in near-real time, without
-    having to edit those scripts to accept a callback."""
-
-    def __init__(self, q: "queue.Queue", stage: str):
-        self._q = q
-        self._stage = stage
-        self._buffer = ""
-
-    def write(self, text: str):
-        self._buffer += text
-        while "\n" in self._buffer:
-            line, self._buffer = self._buffer.split("\n", 1)
-            line = line.strip()
-            if line:
-                self._q.put({"type": "progress", "stage": self._stage, "message": line})
-
-    def flush(self):
-        pass
+def save_cache(cache_path: str, cache: dict):
+    with open(cache_path, "w", encoding="utf-8") as f:
+        json.dump(cache, f, indent=2, ensure_ascii=False)
 
 
-def run_stage(q: "queue.Queue", stage: str, label: str, fn, *args, **kwargs):
-    """Emit a human-readable label, then run fn with its stdout captured
-    into progress events tagged with `stage`. Converts the workflow
-    scripts' sys.exit()-on-bad-input calls into a normal exception instead
-    of killing the API process."""
-    q.put({"type": "progress", "stage": stage, "message": label})
-    writer = QueueWriter(q, stage)
-    try:
-        with contextlib.redirect_stdout(writer):
-            return fn(*args, **kwargs)
-    except SystemExit as e:
-        raise RuntimeError(f"{label} -- {e}") from e
+def validate_ladder(ladder: dict, name: str, allow_empty_at_1_0_only: bool):
+    for step in TOLERANCE_STEPS:
+        if step not in ladder:
+            raise RuntimeError(f"{name}: missing tolerance step '{step}' in Gemini response")
+        if step != "1.0" and allow_empty_at_1_0_only and not ladder[step]:
+            raise RuntimeError(f"{name}: tolerance step '{step}' is empty (only 1.0 may be empty)")
 
 
-def format_sse(payload: dict) -> str:
-    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+def snap_step(t: float) -> str:
+    steps_f = [float(s) for s in TOLERANCE_STEPS]
+    closest = min(steps_f, key=lambda s: abs(s - t))
+    return f"{closest:.1f}"
 
 
-# ---------------------------------------------------------------------------
-# Turning a selected tender + the submitted profile into a match record for
-# the frontend.
+def lerp(a: float, b: float, t: float) -> float:
+    return a + (b - a) * t
+
+
+def resolve_code_list(ladder: dict, t: float):
+    """cpv/nuts ladders: list of {code, label} dicts at the snapped step."""
+    step = snap_step(t)
+    entries = ladder[step]
+    codes = [e["code"] for e in entries]
+    return codes, entries, step
+
+
+def resolve_keyword_list(ladder: dict, t: float):
+    step = snap_step(t)
+    return ladder[step], step
+
+
+def yaml_str(s: str) -> str:
+    """Double-quote a string for safe YAML embedding."""
+    escaped = s.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+def render_filters_body(company: dict, ladders: dict, tol: dict) -> str:
+    """Renders the flat filters.yaml body -- top-level fields, no
+    company-key wrapper (there's only ever one company/profile)."""
+    lines = []
+    lines.append(f"display_name: {yaml_str(company.get('name', 'company'))}")
+    lines.append("")
+
+    # Machine-readable record of the exact per-criterion tolerance dials
+    # used to produce this filters.yaml. Unlike the human-readable summary
+    # in the header comment, this block is a real YAML field that
+    # fetch_tenders_oeffentlichevergabe.py reads and stamps onto every
+    # tender it matches under this filter (see that script's
+    # OPTIONAL_FIELD_DEFAULTS / render_markdown()), so each tender's own
+    # .md records which tolerance it was found under. That, in turn, is
+    # what 8_change_filter_tolerance.py reads back out of index.json to
+    # compute a new tolerance from a kept/removed tender comparison -- see
+    # that script's docstring.
+    lines.append("# Exact tolerance dials used to build this file (machine-readable;")
+    lines.append("# do not remove -- downstream scripts depend on this block).")
+    lines.append("tolerance:")
+    lines.append(f"  cpv: {tol['cpv']:.4f}")
+    lines.append(f"  nuts: {tol['nuts']:.4f}")
+    lines.append(f"  value: {tol['value']:.4f}")
+    lines.append(f"  exclude: {tol['exclude']:.4f}")
+    lines.append(f"  role_hint: {tol['role_hint']:.4f}")
+    lines.append("")
+
+    cpv_codes, cpv_entries, cpv_step = resolve_code_list(ladders["cpv_ladder"], tol["cpv"])
+    lines.append(f"# cpv_prefixes (tolerance={tol['cpv']:.2f}, snapped to step {cpv_step})")
+    lines.append("cpv_prefixes:")
+    for e in cpv_entries:
+        lines.append(f"  - {yaml_str(e['code'])}  # {e.get('label', '')}")
+    lines.append("")
+
+    nuts_codes, nuts_entries, nuts_step = resolve_code_list(ladders["nuts_ladder"], tol["nuts"])
+    lines.append(f"# nuts_prefixes (tolerance={tol['nuts']:.2f}, snapped to step {nuts_step})")
+    lines.append("nuts_prefixes:")
+    for e in nuts_entries:
+        lines.append(f"  - {yaml_str(e['code'])}  # {e.get('label', '')}")
+    lines.append("")
+
+    vmin = lerp(ladders["value_min_tight"], ladders["value_min_loose"], tol["value"])
+    vmax = lerp(ladders["value_max_tight"], ladders["value_max_loose"], tol["value"])
+    lines.append(f"# value_min / value_max (tolerance={tol['value']:.2f}, interpolated between")
+    lines.append(f"# tight [{ladders['value_min_tight']:,.0f}, {ladders['value_max_tight']:,.0f}] and")
+    lines.append(f"# loose [{ladders['value_min_loose']:,.0f}, {ladders['value_max_loose']:,.0f}])")
+    lines.append(f"value_min: {vmin:.0f}")
+    lines.append(f"value_max: {vmax:.0f}")
+    lines.append("")
+
+    excl_list, excl_step = resolve_keyword_list(ladders["exclude_keywords_ladder"], tol["exclude"])
+    warn = "  # NOTE: tolerance > 0 here means real stated exclusions are being dropped." if tol["exclude"] > 0 else ""
+    lines.append(f"# exclude_keywords (tolerance={tol['exclude']:.2f}, snapped to step {excl_step}){warn}")
+    if excl_list:
+        lines.append("exclude_keywords:")
+        for kw in excl_list:
+            lines.append(f"  - {yaml_str(kw)}")
+    else:
+        lines.append("exclude_keywords: []")
+    lines.append("")
+
+    role_list, role_step = resolve_keyword_list(ladders["role_hint_ladder"], tol["role_hint"])
+    lines.append(f"# role_hint_reject (tolerance={tol['role_hint']:.2f}, snapped to step {role_step})")
+    if role_list:
+        lines.append("role_hint_reject:")
+        for kw in role_list:
+            lines.append(f"  - {yaml_str(kw)}")
+    else:
+        lines.append("role_hint_reject: []")
+    lines.append("")
+
+    lines.append("# Newer optional fields (procurement_methods_allowed, min_bid_prep_days,")
+    lines.append("# reject_reserved_participation, contract_starts_after/_before) are left")
+    lines.append("# unset here -- company_details.json doesn't carry enough signal to set")
+    lines.append("# them confidently. Uncomment and tune by hand once real match volume exists.")
+    lines.append("# procurement_methods_allowed: [\"open\", \"restricted\"]")
+    lines.append("# min_bid_prep_days: 10")
+    lines.append("# reject_reserved_participation: false")
+    lines.append("# contract_starts_after: null")
+    lines.append("# contract_starts_before: null")
+    lines.append("")
+
+    notes = ladders.get("notes", "").strip()
+    tol_summary = (
+        f"[Generated at tolerance: cpv={tol['cpv']:.2f}, nuts={tol['nuts']:.2f}, "
+        f"value={tol['value']:.2f}, exclude={tol['exclude']:.2f}, role_hint={tol['role_hint']:.2f}]"
+    )
+    full_notes = f"{notes} {tol_summary}".strip()
+    lines.append(f"notes: {yaml_str(full_notes)}")
+
+    return "\n".join(lines)
+
+
+def render_header(tol_defaults: dict) -> str:
+    return f"""\
+# ============================================================================
+# filters.yaml — AUTO-GENERATED by 2_company_details_to_initial_filter.py
+# ============================================================================
+# Generated from company_details.json. This file is plain YAML and safe to
+# hand-edit afterward; re-running the generator script will overwrite it
+# completely, so save manual tweaks elsewhere if you want to keep them.
 #
-# PLACEHOLDER, PENDING REDESIGN: the old version of this built a 50-97 score
-# and reasons/considerations off standardized fields (tender.value,
-# tender.location, tender.contractNature, tender.requiredCertificates, ...)
-# that came from 4_standardize_tenders.py. That stage is gone -- a selected
-# tender is now just {id, title, authority, value, currency, deadline,
-# priority, markdown} (see 5_select_tenders.py) -- so most of that scoring
-# logic no longer has inputs to work with. Scoring/reasons are intentionally
-# left minimal here until that's redesigned; this just passes the raw
-# markdown through with a couple of cached display fields on top.
-# No LLM call here either way -- the tender already passed the
-# Gemini-generated filters.yaml block earlier in the pipeline.
-# ---------------------------------------------------------------------------
+# TOLERANCE (see script docstring for full details): every criterion below
+# was produced at its own tolerance in [0.0, 1.0], the inverse of filter
+# strength (0.0 = strict/true to company_details.json, 1.0 = no filtering
+# on that criterion). Defaults used for this run unless overridden per
+# criterion:
+#   cpv={tol_defaults['cpv']:.2f}  nuts={tol_defaults['nuts']:.2f}  value={tol_defaults['value']:.2f}  \
+exclude={tol_defaults['exclude']:.2f}  role_hint={tol_defaults['role_hint']:.2f}
+# NOTE: exclude_keywords represents genuine hard capability limits (things
+# the company explicitly said it cannot/will not do). A tolerance above 0.0
+# there means real exclusions are being dropped -- recommended default is
+# --tolerance-exclude 0.0 unless you have a specific reason to loosen it.
+#
+# See fetch_tenders.py / the original filters.yaml for the full field
+# reference (cpv_prefixes, nuts_prefixes, value_min/max, exclude_keywords,
+# role_hint_reject, and the newer optional fields).
+# -----------------------------------------------------------------------------
 
-def build_match(tender_dict: dict, profile: CompanyProfile) -> dict:
-    title = tender_dict.get("title") or "This tender"
-    authority = tender_dict.get("authority") or "the contracting authority"
+"""
 
-    return {
-        "tender": tender_dict,  # includes "markdown": full raw tender .md content
-        "score": None,  # TODO: redesign now that standardized fields are gone
-        "reasons": ["Passed the CPV, region and value filters generated from your company profile."],
-        "considerations": [],
-        "summary": (
-            f"{title}, published by {authority}, was pulled in by the tender filter "
-            f"generated from your company profile and is worth a closer look."
-        ),
+
+def resolve_tolerances(
+    tolerance: float = 0.5,
+    tolerance_cpv: float = None,
+    tolerance_nuts: float = None,
+    tolerance_value: float = None,
+    tolerance_exclude: float = None,
+    tolerance_role_hint: float = None,
+) -> dict:
+    tol_defaults = {
+        "cpv": tolerance_cpv if tolerance_cpv is not None else tolerance,
+        "nuts": tolerance_nuts if tolerance_nuts is not None else tolerance,
+        "value": tolerance_value if tolerance_value is not None else tolerance,
+        "exclude": tolerance_exclude if tolerance_exclude is not None else tolerance,
+        "role_hint": tolerance_role_hint if tolerance_role_hint is not None else tolerance,
     }
+    for name, val in tol_defaults.items():
+        if not (0.0 <= val <= 1.0):
+            raise ValueError(f"tolerance for '{name}' must be in [0.0, 1.0], got {val}")
+    return tol_defaults
 
 
-# ---------------------------------------------------------------------------
-# The pipeline itself
-# ---------------------------------------------------------------------------
+def build_filters_yaml(
+    company: dict,
+    tol_defaults: dict,
+    api_key: str,
+    model: str = GEMINI_MODEL_DEFAULT,
+    cache_path: str = ".filter_ladders_cache.json",
+    refresh: bool = False,
+) -> str:
+    """Core library function: given the already-loaded company dict (the
+    single object from company_details.json) and resolved tolerances, call
+    Gemini (with caching) as needed and return the full rendered
+    filters.yaml text. Does not touch --input/--out paths itself."""
+    cache = {} if refresh else load_cache(cache_path)
 
-def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> list[dict]:
-    q.put({"type": "progress", "stage": "starting", "message": "Starting your tender search..."})
+    name = company.get("name", "unnamed")
 
-    run_stage(
-        q, "saving_profile", "Saving your company profile...",
-        save_company_profile, profile,
-    )
-
-    run_stage(
-        q, "building_filter",
-        "Working out which tender categories and regions fit your company "
-        "(this calls Gemini and can take a moment)...",
-        filter_module.run,
-        input_path=str(COMPANY_DETAILS_PATH),
-        out_path=str(FILTERS_PATH),
-    )
-
-    run_stage(
-        q, "fetching_tenders",
-        f"Searching oeffentlichevergabe.de for matching tenders "
-        f"(up to {PIPELINE_MAX_DAYS_BACK} days back)...",
-        run_filter_module.run_filter_for_tenders,
-        filters_path=FILTERS_PATH,
-        fetch_module_path=FETCH_MODULE_PATH,
-        output_dir=TENDERS_DIR,
-        tenders_seen_dir=TENDERS_SEEN_DIR,
-        target=PIPELINE_TARGET_COUNT,
-        max_days=PIPELINE_MAX_DAYS_BACK,
-    )
-
-    q.put({"type": "progress", "stage": "selecting", "message": "Picking your top tenders..."})
-    try:
-        selected = select_module.select_tenders(
-            count=PIPELINE_SELECT_COUNT,
-            tenders_dir=TENDERS_DIR,
-        )
-    except (FileNotFoundError, ValueError) as e:
-        raise RuntimeError(
-            "No tenders matched your profile within the search window. "
-            "Try broadening your specifications or contract value range."
-        ) from e
-
-    q.put({"type": "progress", "stage": "done", "message": f"Found {len(selected)} tender(s)."})
-    return [build_match(t, profile) for t in selected]
-
-
-def pipeline_event_stream(profile: CompanyProfile):
-    q: "queue.Queue" = queue.Queue()
-    result: dict = {}
-
-    def worker():
-        try:
-            with PIPELINE_LOCK:
-                result["matches"] = run_pipeline(profile, q)
-        except Exception as e:  # surfaced to the client as an error event, not a 500
-            result["error"] = str(e)
-        finally:
-            q.put(None)  # sentinel: no more events
-
-    threading.Thread(target=worker, daemon=True).start()
-
-    while True:
-        item = q.get()
-        if item is None:
-            break
-        yield format_sse(item)
-
-    if "error" in result:
-        yield format_sse({"type": "error", "message": result["error"]})
+    if name in cache and not refresh:
+        print(f"{name}: using cached ladder ({cache_path})")
+        ladders = cache[name]
     else:
-        yield format_sse({
-            "type": "done",
-            "matches": result.get("matches", []),
-        })
+        print(f"{name}: calling Gemini ({model}) to build filter ladder...")
+        prompt = build_prompt(company)
+        ladders = call_gemini(prompt, api_key, model)
+        cache[name] = ladders
+        save_cache(cache_path, cache)
+
+    validate_ladder(ladders["cpv_ladder"], f"{name} cpv_ladder", allow_empty_at_1_0_only=True)
+    validate_ladder(ladders["nuts_ladder"], f"{name} nuts_ladder", allow_empty_at_1_0_only=True)
+    validate_ladder(ladders["exclude_keywords_ladder"], f"{name} exclude_keywords_ladder", allow_empty_at_1_0_only=False)
+    validate_ladder(ladders["role_hint_ladder"], f"{name} role_hint_ladder", allow_empty_at_1_0_only=False)
+
+    body = render_filters_body(company, ladders, tol_defaults)
+    print(f"  -> resolved filters.yaml body for '{name}'")
+
+    return render_header(tol_defaults) + body + "\n"
 
 
-# ---------------------------------------------------------------------------
-# Removing a tender the user dismissed. Much shorter than the match
-# pipeline (no external API calls) but follows the same
-# progress-over-SSE + single-lock pattern for consistency, and because
-# run_stage()'s stdout capture is process-global (see PIPELINE_LOCK's own
-# comment) -- a removal running concurrently with a match pipeline would
-# scramble both their progress streams otherwise.
-# ---------------------------------------------------------------------------
+def run(
+    input_path: str = "company_details.json",
+    out_path: str = "filters.yaml",
+    model: str = GEMINI_MODEL_DEFAULT,
+    cache_path: str = None,
+    refresh: bool = False,
+    tolerance: float = 0.5,
+    tolerance_cpv: float = None,
+    tolerance_nuts: float = None,
+    tolerance_value: float = None,
+    tolerance_exclude: float = None,
+    tolerance_role_hint: float = None,
+    api_key: str = None,
+) -> str:
+    """Library entry point mirroring the CLI end to end: load
+    company_details.json (a single flat company object), resolve
+    tolerances, call Gemini (cached), write filters.yaml, and return its
+    text.
+    """
+    api_key = api_key or get_gemini_api_key()
 
-class RemoveTenderRequest(BaseModel):
-    markdown: str  # full raw tender markdown, as returned by /tenders/match's
-                    # "matches"[i].tender.markdown -- notice_id is extracted
-                    # from it server-side, see 6_user_select_remove_tenders.py
+    tol_defaults = resolve_tolerances(
+        tolerance, tolerance_cpv, tolerance_nuts, tolerance_value,
+        tolerance_exclude, tolerance_role_hint,
+    )
 
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"input file not found: {input_path}")
 
-def run_remove_pipeline(req: RemoveTenderRequest, q: "queue.Queue") -> dict:
-    q.put({"type": "progress", "stage": "starting", "message": "Removing tender..."})
-    try:
-        result = run_stage(
-            q, "removing",
-            "Moving this tender out of your active tender list...",
-            remove_module.remove_tender,
-            markdown=req.markdown,
-            tenders_dir=TENDERS_DIR,
-            tenders_seen_dir=TENDERS_SEEN_DIR,
+    with open(input_path, "r", encoding="utf-8") as f:
+        company = json.load(f)
+    if not isinstance(company, dict) or not company:
+        raise ValueError(
+            f"{input_path} must contain a single company object "
+            f"(a flat JSON mapping of company detail fields, not a list)"
         )
-    except (FileNotFoundError, ValueError) as e:
-        raise RuntimeError(f"Could not remove tender: {e}") from e
-    q.put({"type": "progress", "stage": "done", "message": "Tender removed."})
-    return result
 
-
-def remove_event_stream(req: RemoveTenderRequest):
-    q: "queue.Queue" = queue.Queue()
-    result: dict = {}
-
-    def worker():
-        try:
-            with PIPELINE_LOCK:
-                result["removal"] = run_remove_pipeline(req, q)
-        except Exception as e:
-            result["error"] = str(e)
-        finally:
-            q.put(None)
-
-    threading.Thread(target=worker, daemon=True).start()
-
-    while True:
-        item = q.get()
-        if item is None:
-            break
-        yield format_sse(item)
-
-    if "error" in result:
-        yield format_sse({"type": "error", "message": result["error"]})
-    else:
-        yield format_sse({"type": "done", **result.get("removal", {})})
-
-
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
-
-@app.get("/health")
-def health():
-    return {
-        "status": "ok",
-        "companyDetailsPath": str(COMPANY_DETAILS_PATH.resolve()),
-        "companyDetailsExists": COMPANY_DETAILS_PATH.exists(),
-        "filtersPath": str(FILTERS_PATH.resolve()),
-        "tendersDir": str(TENDERS_DIR.resolve()),
-        "tendersSeenDir": str(TENDERS_SEEN_DIR.resolve()),
-        "pipeline": {
-            "targetCount": PIPELINE_TARGET_COUNT,
-            "maxDaysBack": PIPELINE_MAX_DAYS_BACK,
-            "selectCount": PIPELINE_SELECT_COUNT,
-        },
-    }
-
-
-@app.post("/admin/save-company-profile")
-def save_company_profile_route(profile: CompanyProfile):
-    """Writes the submitted profile to company_details.json directly,
-    without running the rest of the pipeline -- for updating the company
-    profile ahead of a scheduled/batch workflow_tools run. Overwrites
-    whatever company profile was previously stored."""
-    record = save_company_profile(profile)
-    return {
-        "status": "saved",
-        "path": str(COMPANY_DETAILS_PATH.resolve()),
-        "record": record,
-    }
-
-
-@app.post("/tenders/match")
-def match_tenders_stream(profile: CompanyProfile):
-    """Runs the full live pipeline for this profile and streams progress
-    back as Server-Sent Events, ending with one {"type": "done", "matches":
-    [...]} event (or {"type": "error", ...} on failure). Submitting a
-    profile overwrites the currently stored company_details.json/
-    filters.yaml -- this backend only ever tracks one company."""
-    return StreamingResponse(
-        pipeline_event_stream(profile),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",  # disable nginx response buffering, if present
-        },
+    resolved_cache_path = cache_path or os.path.join(
+        os.path.dirname(os.path.abspath(out_path)) or ".", ".filter_ladders_cache.json"
     )
 
-
-@app.post("/tenders/remove")
-def remove_tender_stream(req: RemoveTenderRequest):
-    """Dismisses one tender (by its full raw markdown, from a prior
-    /tenders/match "done" event's matches[i].tender.markdown) and streams
-    progress back as Server-Sent Events, ending with one {"type": "done",
-    "status": "removed" | "already_removed", "id": "..."} event (or
-    {"type": "error", ...} on failure -- e.g. unparseable markdown or an
-    unknown id). The notice_id is extracted from the markdown server-side,
-    not supplied by the caller -- see 6_user_select_remove_tenders.py."""
-    return StreamingResponse(
-        remove_event_stream(req),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
+    output = build_filters_yaml(
+        company, tol_defaults, api_key, model=model,
+        cache_path=resolved_cache_path, refresh=refresh,
     )
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(output)
+
+    print(f"\nWrote {out_path} for '{company.get('name', 'company')}'.")
+    print(f"Ladder cache: {resolved_cache_path} (re-run with different --tolerance-* flags without re-calling Gemini)")
+    return output
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Convert company_details.json into filters.yaml via Gemini, with a per-criterion tolerance dial.")
+    parser.add_argument("--input", default="company_details.json", help="Path to company_details.json (default: company_details.json)")
+    parser.add_argument("--out", default="filters.yaml", help="Output filters.yaml path (default: filters.yaml)")
+    parser.add_argument("--model", default=GEMINI_MODEL_DEFAULT, help=f"Gemini model (default: {GEMINI_MODEL_DEFAULT})")
+    parser.add_argument("--cache-path", default=None, help="Cache file for the raw Gemini ladder (default: .filter_ladders_cache.json next to --out)")
+    parser.add_argument("--refresh", action="store_true", help="Ignore cache and re-call Gemini")
+
+    parser.add_argument("--tolerance", type=float, default=0.5, help="Global default tolerance in [0,1] for any dial not set explicitly (default: 0.5)")
+    parser.add_argument("--tolerance-cpv", type=float, default=None)
+    parser.add_argument("--tolerance-nuts", type=float, default=None)
+    parser.add_argument("--tolerance-value", type=float, default=None)
+    parser.add_argument("--tolerance-exclude", type=float, default=None)
+    parser.add_argument("--tolerance-role-hint", type=float, default=None)
+    args = parser.parse_args()
+
+    try:
+        api_key = get_gemini_api_key()
+    except RuntimeError as e:
+        sys.exit(f"ERROR: {e}")
+
+    try:
+        run(
+            input_path=args.input,
+            out_path=args.out,
+            model=args.model,
+            cache_path=args.cache_path,
+            refresh=args.refresh,
+            tolerance=args.tolerance,
+            tolerance_cpv=args.tolerance_cpv,
+            tolerance_nuts=args.tolerance_nuts,
+            tolerance_value=args.tolerance_value,
+            tolerance_exclude=args.tolerance_exclude,
+            tolerance_role_hint=args.tolerance_role_hint,
+            api_key=api_key,
+        )
+    except (FileNotFoundError, ValueError, RuntimeError) as e:
+        sys.exit(f"ERROR: {e}")
+
+
+if __name__ == "__main__":
+    main()
