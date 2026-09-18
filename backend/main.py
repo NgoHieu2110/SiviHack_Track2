@@ -27,11 +27,17 @@ over the same POST response body:
        value range, exclusions, role hints).
     3. workflow_tools/3_run_filter_for_tenders.py: walk oeffentlichevergabe.de
        backward day by day until PIPELINE_TARGET_COUNT tenders match, or
-       PIPELINE_MAX_DAYS_BACK is hit.
-    4. workflow_tools/4_standardize_tenders.py: normalize the raw hits into
-       the standardized schema.
-    5. workflow_tools/5_select_tendars.py: pick PIPELINE_SELECT_COUNT of
-       them at random.
+       PIPELINE_MAX_DAYS_BACK is hit. This also updates
+       backend/tenders/<company_key>/index.json (priority bookkeeping --
+       see tender_index.py).
+    4. workflow_tools/5_select_tenders.py: pick PIPELINE_SELECT_COUNT of the
+       highest-priority tenders from index.json and return each one's full
+       raw markdown.
+
+    There is no more standardization stage -- backend/standardized_tenders/
+    and 4_standardize_tenders.py have been removed. backend/tenders/ is now
+    the only tender store, and what's sent to the frontend is each selected
+    tender's raw .md content rather than a parsed/standardized JSON record.
 
 Each SSE event is one line of JSON after "data: ":
     {"type": "progress", "stage": "...", "message": "..."}   (many)
@@ -72,7 +78,7 @@ from fastapi import FastAPI, HTTPException  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import StreamingResponse  # noqa: E402
 
-from models import CompanyProfile, Tender, TenderMatch  # noqa: E402
+from models import CompanyProfile  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Paths. Defaults assume the layout documented in 3_run_filter_for_tenders.py:
@@ -85,11 +91,10 @@ from models import CompanyProfile, Tender, TenderMatch  # noqa: E402
 #       1_company_md_to_company_details.py
 #       2_company_details_to_initial_filter.py
 #       3_run_filter_for_tenders.py
-#       4_standardize_tenders.py
-#       5_select_tendars.py
+#       5_select_tenders.py
+#       tender_index.py
 #       company_details.json
-#     tenders/                     <- raw fetch output
-#     standardized_tenders/        <- standardized output
+#     tenders/                     <- raw fetch output + per-company index.json
 #
 # Every path is overridable via env var if your layout differs.
 # ---------------------------------------------------------------------------
@@ -101,12 +106,10 @@ FETCH_MODULE_PATH = Path(
 )
 COMPANY_DETAILS_PATH = Path(os.environ.get("COMPANY_DETAILS_PATH", WORKFLOW_TOOLS_DIR / "company_details.json"))
 TENDERS_DIR = Path(os.environ.get("TENDERS_DIR", BASE_DIR / "tenders"))
-STANDARDIZED_TENDERS_DIR = Path(os.environ.get("STANDARDIZED_TENDERS_DIR", BASE_DIR / "standardized_tenders"))
 
 FILTER_SCRIPT_PATH = Path(os.environ.get("FILTER_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "2_company_details_to_initial_filter.py"))
 FETCH_FILTER_RUNNER_PATH = Path(os.environ.get("FETCH_FILTER_RUNNER_PATH", WORKFLOW_TOOLS_DIR / "3_run_filter_for_tenders.py"))
-STANDARDIZE_SCRIPT_PATH = Path(os.environ.get("STANDARDIZE_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "4_standardize_tenders.py"))
-SELECT_SCRIPT_PATH = Path(os.environ.get("SELECT_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "5_select_tendars.py"))
+SELECT_SCRIPT_PATH = Path(os.environ.get("SELECT_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "5_select_tenders.py"))
 
 ALLOWED_ORIGINS = [
     origin.strip()
@@ -163,7 +166,6 @@ def load_module(name: str, path: Path):
 
 filter_module = load_module("details_to_filter", FILTER_SCRIPT_PATH)
 run_filter_module = load_module("run_filter_for_tenders", FETCH_FILTER_RUNNER_PATH)
-standardize_module = load_module("standardize_tenders", STANDARDIZE_SCRIPT_PATH)
 select_module = load_module("select_tenders", SELECT_SCRIPT_PATH)
 
 
@@ -251,73 +253,36 @@ def format_sse(payload: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Turning a selected standardized tender + the submitted profile into a
-# TenderMatch. No LLM call here -- the tender already passed the
-# Gemini-generated filters.yaml block earlier in the pipeline; this is a
-# deterministic explanation layer for the UI, not a second AI pass.
+# Turning a selected tender + the submitted profile into a match record for
+# the frontend.
+#
+# PLACEHOLDER, PENDING REDESIGN: the old version of this built a 50-97 score
+# and reasons/considerations off standardized fields (tender.value,
+# tender.location, tender.contractNature, tender.requiredCertificates, ...)
+# that came from 4_standardize_tenders.py. That stage is gone -- a selected
+# tender is now just {id, title, authority, value, currency, deadline,
+# priority, markdown} (see 5_select_tenders.py) -- so most of that scoring
+# logic no longer has inputs to work with. Scoring/reasons are intentionally
+# left minimal here until that's redesigned; this just passes the raw
+# markdown through with a couple of cached display fields on top.
+# No LLM call here either way -- the tender already passed the
+# Gemini-generated filters.yaml block earlier in the pipeline.
 # ---------------------------------------------------------------------------
 
-def _parse_amount(value) -> float | None:
-    if value is None:
-        return None
-    try:
-        return float(str(value).replace(",", "").replace("€", "").strip())
-    except (TypeError, ValueError):
-        return None
-
-
 def build_match(tender_dict: dict, profile: CompanyProfile) -> dict:
-    tender = Tender(**tender_dict)
+    title = tender_dict.get("title") or "This tender"
+    authority = tender_dict.get("authority") or "the contracting authority"
 
-    reasons: list[str] = []
-    considerations: list[str] = []
-    score = 65
-
-    vmin, vmax = _parse_amount(profile.contractValueMin), _parse_amount(profile.contractValueMax)
-    if tender.value is not None and vmin is not None and vmax is not None:
-        if vmin <= tender.value <= vmax:
-            score += 15
-            reasons.append("Contract value falls within your stated range.")
-        else:
-            considerations.append("Contract value falls outside your stated range -- double-check it fits.")
-    elif tender.value is None:
-        considerations.append("The buyer did not publish a contract value -- verify before bidding.")
-
-    place = profile.placeOfPerformance or ""
-    if place and tender.location:
-        place_parts = [p.strip().lower() for p in re.split(r"[,/]", place) if p.strip()]
-        if any(p in tender.location.lower() for p in place_parts):
-            score += 10
-            reasons.append("Located in or near your stated place of performance.")
-
-    if tender.contractNature and profile.contractNature and tender.contractNature.lower() == profile.contractNature.lower():
-        score += 5
-        reasons.append("Contract nature matches your profile.")
-
-    reasons.append("Passed the CPV, region and value filters generated from your company profile.")
-
-    if tender.requiredCertificates:
-        considerations.append("Requires certificate(s): " + ", ".join(tender.requiredCertificates))
-    if tender.guaranteeRequired:
-        considerations.append(f"Guarantee required: {tender.guaranteeRequired}")
-
-    score = max(50, min(score, 97))
-
-    title = tender.title or "This tender"
-    authority = tender.authority or "the contracting authority"
-    summary = (
-        f"{title}, published by {authority}, was pulled in by the tender filter generated from "
-        f"your company profile and is worth a closer look."
-    )
-
-    match = TenderMatch(
-        tender=tender,
-        score=score,
-        reasons=reasons,
-        considerations=considerations,
-        summary=summary,
-    )
-    return match.model_dump()
+    return {
+        "tender": tender_dict,  # includes "markdown": full raw tender .md content
+        "score": None,  # TODO: redesign now that standardized fields are gone
+        "reasons": ["Passed the CPV, region and value filters generated from your company profile."],
+        "considerations": [],
+        "summary": (
+            f"{title}, published by {authority}, was pulled in by the tender filter "
+            f"generated from your company profile and is worth a closer look."
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -369,20 +334,12 @@ def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> list[dict]:
             force=True,  # single freshly-written ephemeral company; skip the batch cross-check
         )
 
-        run_stage(
-            q, "standardizing", "Standardizing the tenders we found...",
-            standardize_module.standardize_tenders,
-            input_dir=TENDERS_DIR,
-            output_dir=STANDARDIZED_TENDERS_DIR,
-            companies=[company_key],
-        )
-
         q.put({"type": "progress", "stage": "selecting", "message": "Picking your top tenders..."})
         try:
             selected = select_module.select_tenders(
                 company_key=company_key,
                 count=PIPELINE_SELECT_COUNT,
-                standardized_dir=STANDARDIZED_TENDERS_DIR,
+                tenders_dir=TENDERS_DIR,
             )
         except (FileNotFoundError, ValueError) as e:
             raise RuntimeError(
@@ -434,7 +391,6 @@ def health():
         "companyDetailsPath": str(COMPANY_DETAILS_PATH.resolve()),
         "companyDetailsExists": COMPANY_DETAILS_PATH.exists(),
         "tendersDir": str(TENDERS_DIR.resolve()),
-        "standardizedTendersDir": str(STANDARDIZED_TENDERS_DIR.resolve()),
         "pipeline": {
             "targetCount": PIPELINE_TARGET_COUNT,
             "maxDaysBack": PIPELINE_MAX_DAYS_BACK,

@@ -10,16 +10,19 @@ this script), which you edit directly (plain YAML, no Python) to fine-tune
 matching per company.
 
 For each company block in filters.yaml, this walks backward day by day from
-yesterday until it has collected TARGET_COUNT matching tenders (or hits
-MAX_DAYS_BACK), writing one markdown file per matching tender into:
+yesterday until it has collected TARGET_COUNT *new* matching tenders (or
+hits MAX_DAYS_BACK), writing one markdown file per matching tender into:
 
     tenders/<company_slug>/<notice_id>.md
 
-Each run starts by DELETING each company's existing output folder (the .md
-files and the .seen_ids.txt tracker) and rebuilding it from scratch. This
-means every run is a full fresh pull against today's filters.yaml, not an
-incremental top-up — so re-running after loosening a filter won't leave
-stale matches from a stricter previous run mixed in.
+Each run is INCREMENTAL, not a fresh wipe: a company's existing .md files
+and .seen_ids.txt tracker are kept, so previously matched tenders stay on
+disk and TARGET_COUNT new ones are added on top each time this runs. This
+is what lets 3_run_filter_for_tenders.py's index.json track a rising
+"priority" per tender across repeated runs. Re-running after loosening a
+filter will therefore accumulate matches over time rather than resetting;
+if a genuinely clean slate is needed, delete tenders/<company_slug>/
+yourself before running.
 
 Usage:
     python fetch_tenders_oeffentlichevergabe.py
@@ -34,7 +37,6 @@ import argparse
 import io
 import json
 import re
-import shutil
 import sys
 import zipfile
 from datetime import datetime, timedelta, timezone
@@ -596,16 +598,16 @@ def run(target_count: int, max_days_back: int, company_filter=None, filters_path
     state = {}
     for key in companies:
         company_dir = OUTPUT_ROOT / key
-        if company_dir.exists():
-            shutil.rmtree(company_dir)
         company_dir.mkdir(parents=True, exist_ok=True)
+        seen = load_seen_ids(company_dir)
         state[key] = {
             "dir": company_dir,
-            "seen": load_seen_ids(company_dir),  # always empty right after a wipe
-            "count": 0,
+            "seen": seen,  # carried over from previous runs -- no wipe
+            "count": 0,    # NEW matches found *this run*, not the folder total
         }
         reject_reason_counts[key] = Counter()
-        print(f"{companies[key]['display_name']}: cleared old output, starting fresh (0/{target_count}).")
+        print(f"{companies[key]['display_name']}: {len(seen)} previously matched tender(s) on disk, "
+              f"collecting up to {target_count} new one(s) this run.")
 
     day = datetime.now() - timedelta(days=1)
     days_walked = 0

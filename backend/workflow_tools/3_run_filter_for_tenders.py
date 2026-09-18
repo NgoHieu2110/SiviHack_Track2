@@ -15,6 +15,14 @@ longer exists in company_details.json. This is a validation-only use of
 company_details.json -- the fetch/filter logic itself is driven entirely by
 filters.yaml, exactly as before.
 
+After the fetch runs, this script also updates backend/tenders/<company_key>/
+index.json for every company it just ran (via tender_index.sync_index_with_folder,
+see tender_index.py for the full rules): every tender still present on disk
+gets its priority bumped, newly-found tenders are added at priority 1, and
+tenders whose .md file no longer exists are dropped from the index. This is
+the only place index.json gets written from a fetch run; 5_select_tenders.py
+only reads it (and resets priority on the ones it picks).
+
 Importable use:
     import importlib.util
     spec = importlib.util.spec_from_file_location(
@@ -85,6 +93,19 @@ def load_fetch_module(module_path: Path):
                 f"{module_path} is missing expected attribute '{attr}' -- "
                 f"is this the right file?"
             )
+    return module
+
+
+def load_tender_index_module():
+    """Import tender_index.py by path, same reasoning as load_fetch_module:
+    kept explicit/by-path rather than relying on sys.path so this script
+    works regardless of cwd."""
+    path = SCRIPT_DIR / "tender_index.py"
+    if not path.exists():
+        raise FileNotFoundError(f"tender_index.py not found at {path} (expected next to this script)")
+    spec = importlib.util.spec_from_file_location("tender_index", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
     return module
 
 
@@ -188,7 +209,20 @@ def run_filter_for_tenders(
     output_dir.mkdir(parents=True, exist_ok=True)
     module.OUTPUT_ROOT = output_dir
 
-    return module.run(target, max_days, companies, filters_path)
+    result = module.run(target, max_days, companies, filters_path)
+
+    # Bump/seed priority in index.json for every company this run touched.
+    keys_to_sync = companies if companies else list(filters_companies.keys())
+    tender_index = load_tender_index_module()
+    print("\nUpdating index.json...")
+    for key in keys_to_sync:
+        company_dir = output_dir / key
+        if not company_dir.exists():
+            continue
+        index_data = tender_index.sync_index_with_folder(company_dir)
+        print(f"  {key}: {len(index_data['tenders'])} tender(s) tracked in index.json")
+
+    return result
 
 
 def main():
