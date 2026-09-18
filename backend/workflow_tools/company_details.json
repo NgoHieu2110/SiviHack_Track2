@@ -1,13 +1,11 @@
 {
-  "does": "Railways",
-  "contractNature": "Supplies",
-  "placeOfPerformance": "Hai Duong",
+  "does": "Building",
+  "placeOfPerformance": "North Region",
   "contractValueMin": "0",
-  "contractValueMax": "2849390",
+  "contractValueMax": "83838",
   "exclusions": "",
   "specifications": "",
-  "revenue": 983493.0,
-  "employees": 30,
-  "name": "Web submission 2026-09-18 03:47:28 UTC (ebdeda)",
-  "submittedAt": "2026-09-18T03:47:28.250732+00:00"
+  "revenue": 893239.0,
+  "employees": 40,
+  "submittedAt": "2026-09-18T10:11:28.646816+00:00"
 }

@@ -118,6 +118,7 @@ FILTER_SCRIPT_PATH = Path(os.environ.get("FILTER_SCRIPT_PATH", WORKFLOW_TOOLS_DI
 FETCH_FILTER_RUNNER_PATH = Path(os.environ.get("FETCH_FILTER_RUNNER_PATH", WORKFLOW_TOOLS_DIR / "3_run_filter_for_tenders.py"))
 SELECT_SCRIPT_PATH = Path(os.environ.get("SELECT_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "5_select_tenders.py"))
 REMOVE_SCRIPT_PATH = Path(os.environ.get("REMOVE_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "6_user_select_remove_tenders.py"))
+SELECT_FROM_RAW_SCRIPT_PATH = Path(os.environ.get("SELECT_FROM_RAW_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "7_select_from_raw_tenders.py"))
 
 ALLOWED_ORIGINS = [
     origin.strip()
@@ -178,7 +179,7 @@ filter_module = load_module("details_to_filter", FILTER_SCRIPT_PATH)
 run_filter_module = load_module("run_filter_for_tenders", FETCH_FILTER_RUNNER_PATH)
 select_module = load_module("select_tenders", SELECT_SCRIPT_PATH)
 remove_module = load_module("user_select_remove_tenders", REMOVE_SCRIPT_PATH)
-
+select_from_raw_module = load_module("select_from_raw", SELECT_FROM_RAW_SCRIPT_PATH)
 
 # ---------------------------------------------------------------------------
 # company_details.json persistence
@@ -283,7 +284,7 @@ def build_match(tender_dict: dict, profile: CompanyProfile) -> dict:
 # ---------------------------------------------------------------------------
 
 def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> list[dict]:
-    q.put({"type": "progress", "stage": "starting", "message": "Starting your tender search..."})
+    q.put({"type": "progress", "stage": "selecting", "message": "Asking Gemini to pick and explain your top tenders..."})
 
     run_stage(
         q, "saving_profile", "Saving your company profile...",
@@ -314,18 +315,19 @@ def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> list[dict]:
 
     q.put({"type": "progress", "stage": "selecting", "message": "Picking your top tenders..."})
     try:
-        selected = select_module.select_tenders(
+        matches = select_from_raw_module.select_tenders_with_ai_from_raw(
+            profile=profile.model_dump(),
             count=PIPELINE_SELECT_COUNT,
-            tenders_dir=TENDERS_DIR,
+            raw_dir=TENDERS_DIR,
         )
-    except (FileNotFoundError, ValueError) as e:
+    except (FileNotFoundError, ValueError, RuntimeError) as e:
         raise RuntimeError(
             "No tenders matched your profile within the search window. "
             "Try broadening your specifications or contract value range."
         ) from e
 
-    q.put({"type": "progress", "stage": "done", "message": f"Found {len(selected)} tender(s)."})
-    return [build_match(t, profile) for t in selected]
+    q.put({"type": "progress", "stage": "done", "message": f"Found {len(matches)} tender(s)."})
+    return matches
 
 
 def pipeline_event_stream(profile: CompanyProfile):
@@ -477,7 +479,7 @@ def remove_tender_stream(req: RemoveTenderRequest):
     "status": "removed" | "already_removed", "id": "..."} event (or
     {"type": "error", ...} on failure -- e.g. unparseable markdown or an
     unknown id). The notice_id is extracted from the markdown server-side,
-    not supplied by the caller -- see 6_user_select_remove_tenders.py."""
+    not supplied by the caller -- see 7_user_select_remove_tenders.py."""
     return StreamingResponse(
         remove_event_stream(req),
         media_type="text/event-stream",

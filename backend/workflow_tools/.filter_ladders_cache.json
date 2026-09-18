@@ -319,5 +319,202 @@
     "value_max_tight": 8434339934,
     "value_max_loose": 84343399340,
     "notes": "Company focused on railway construction and service projects based or operating in Hungary, with an extremely large maximum financial capacity."
+  },
+  "unnamed": {
+    "cpv_ladder": {
+      "0.0": [
+        {
+          "code": "45210000",
+          "label": "Building construction work"
+        },
+        {
+          "code": "45262700",
+          "label": "Building alteration work"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "45210000",
+          "label": "Building construction work"
+        },
+        {
+          "code": "45260000",
+          "label": "Special trade construction works"
+        },
+        {
+          "code": "45400000",
+          "label": "Building completion work"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "45200000",
+          "label": "Works for complete or part construction and civil engineering work"
+        },
+        {
+          "code": "45300000",
+          "label": "Building installation work"
+        },
+        {
+          "code": "45400000",
+          "label": "Building completion work"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "45000000",
+          "label": "Construction work"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "45000000",
+          "label": "Construction work"
+        }
+      ],
+      "1.0": []
+    },
+    "nuts_ladder": {
+      "0.0": [
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DEA",
+          "label": "Nordrhein-Westfalen"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "1.0": []
+    },
+    "exclude_keywords_ladder": {
+      "0.0": [
+        "Tiefbau",
+        "Straßenbau",
+        "Brückenbau",
+        "Tunnelbau",
+        "Gartenbau",
+        "GalaBau"
+      ],
+      "0.2": [
+        "Straßenbau",
+        "Brückenbau",
+        "Tunnelbau"
+      ],
+      "0.4": [
+        "Brückenbau",
+        "Tunnelbau"
+      ],
+      "0.6": [
+        "Tunnelbau"
+      ],
+      "0.8": [],
+      "1.0": []
+    },
+    "role_hint_ladder": {
+      "0.0": [
+        "Bauarbeiten",
+        "Hochbau",
+        "Maurerarbeiten",
+        "Instandsetzung",
+        "Sanierung",
+        "Rohbau"
+      ],
+      "0.2": [
+        "Bauarbeiten",
+        "Hochbau",
+        "Instandsetzung",
+        "Sanierung"
+      ],
+      "0.4": [
+        "Bauarbeiten",
+        "Hochbau",
+        "Sanierung"
+      ],
+      "0.6": [
+        "Bauarbeiten"
+      ],
+      "0.8": [
+        "Bauarbeiten"
+      ],
+      "1.0": []
+    },
+    "value_min_tight": 0,
+    "value_min_loose": 0,
+    "value_max_tight": 83838,
+    "value_max_loose": 1000000,
+    "notes": "Profile for a small building construction contractor operating primarily across Northern Germany with contract values capped around 83,838 EUR."
   }
 }

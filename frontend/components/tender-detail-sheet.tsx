@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { formatCurrency } from "@/lib/tender-mock"
+import { formatCurrency, splitDescription } from "@/lib/tender-mock"
 import type { TenderMatch } from "@/lib/tender-types"
 import {
   Sparkles,
@@ -20,6 +20,7 @@ import {
   BadgeCheck,
   Landmark,
   ClipboardList,
+  Info,
 } from "lucide-react"
 
 type Props = {
@@ -30,10 +31,19 @@ type Props = {
   onSelect: (id: string) => void
 }
 
-function scoreColor(score: number) {
+function scoreColor(score: number | null) {
+  if (score === null) return "text-muted-foreground"
   if (score >= 75) return "text-emerald-600 dark:text-emerald-400"
   if (score >= 55) return "text-amber-600 dark:text-amber-400"
   return "text-muted-foreground"
+}
+
+/** Backend fields (contractNature, startDate, guaranteeRequired, ...) can
+ * legitimately come back as null when the source notice didn't carry a
+ * reliable value (see backend/models.py's Tender). Fall back to a plain
+ * "Not specified" instead of rendering blank or "null". */
+function orNotSpecified(value: string | null | undefined) {
+  return value && value.trim() !== "" ? value : "Not specified"
 }
 
 function Fact({
@@ -60,6 +70,7 @@ function Fact({
 
 export function TenderDetailSheet({ match, open, onOpenChange, isSelected, onSelect }: Props) {
   const tender = match?.tender
+  const description = tender ? splitDescription(tender.description || "") : null
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -72,42 +83,48 @@ export function TenderDetailSheet({ match, open, onOpenChange, isSelected, onSel
                   <Badge variant="secondary" className="rounded-md text-[10px]">
                     Tender details
                   </Badge>
-                  <SheetTitle className="text-balance text-lg leading-snug">{tender.title}</SheetTitle>
+                  <SheetTitle className="text-balance text-lg leading-snug">
+                    {tender.title || "Untitled tender"}
+                  </SheetTitle>
                   <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Building2 className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{tender.authority}</span>
+                    <span className="truncate">{tender.authority || "Contracting authority not specified"}</span>
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className={`text-3xl font-bold ${scoreColor(match.score)}`}>{match.score}%</div>
+                  <div className={`text-3xl font-bold ${scoreColor(match.score)}`}>
+                    {match.score !== null ? `${match.score}%` : "—"}
+                  </div>
                   <div className="text-[9px] uppercase tracking-wide text-muted-foreground">match</div>
                 </div>
               </div>
-              <Progress value={match.score} className="h-1.5" />
+              {match.score !== null && <Progress value={match.score} className="h-1.5" />}
             </SheetHeader>
 
             <div className="flex flex-1 flex-col gap-6 p-6">
               <div className="grid grid-cols-2 gap-4">
-                <Fact icon={Wallet} label="Contract value" value={formatCurrency(tender.value, tender.currency)} />
-                <Fact icon={MapPin} label="Location" value={tender.location} />
-                <Fact icon={CalendarClock} label="Deadline" value={tender.deadline} />
-                <Fact icon={Users} label="Role" value={tender.role} />
-                <Fact icon={ClipboardList} label="Contract nature" value={tender.contractNature} />
-                <Fact icon={CalendarClock} label="Start date" value={tender.startDate} />
-                <Fact icon={Landmark} label="CPV code" value={`${tender.cpvCode}`} />
-                <Fact icon={ShieldCheck} label="Guarantee" value={tender.guaranteeRequired} />
+                <Fact icon={Wallet} label="Contract value" value={formatCurrency(tender.value, tender.currency ?? undefined)} />
+                <Fact icon={MapPin} label="Location" value={orNotSpecified(tender.location)} />
+                <Fact icon={CalendarClock} label="Deadline" value={orNotSpecified(tender.deadline)} />
+                <Fact icon={Users} label="Role" value={orNotSpecified(tender.role)} />
+                <Fact icon={ClipboardList} label="Contract nature" value={orNotSpecified(tender.contractNature)} />
+                <Fact icon={CalendarClock} label="Start date" value={orNotSpecified(tender.startDate)} />
+                <Fact icon={Landmark} label="CPV code" value={orNotSpecified(tender.cpvCode)} />
+                <Fact icon={ShieldCheck} label="Guarantee" value={orNotSpecified(tender.guaranteeRequired)} />
               </div>
 
               <Separator />
 
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">CPV category</p>
-                <p className="text-sm text-foreground/90">{tender.cpvLabel}</p>
+                <p className="text-sm text-foreground/90">{orNotSpecified(tender.cpvLabel)}</p>
               </div>
 
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</p>
-                <p className="text-sm leading-relaxed text-foreground/90">{tender.description}</p>
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  {description?.core.trim() || "No description provided."}
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -115,7 +132,7 @@ export function TenderDetailSheet({ match, open, onOpenChange, isSelected, onSel
                   Insurance required
                 </p>
                 <p className="text-sm text-foreground/90">
-                  {formatCurrency(tender.insuranceRequired, tender.currency)}
+                  {formatCurrency(tender.insuranceRequired, tender.currency ?? undefined)}
                 </p>
               </div>
 
@@ -179,6 +196,35 @@ export function TenderDetailSheet({ match, open, onOpenChange, isSelected, onSel
                     ))}
                   </ul>
                 </div>
+              )}
+
+              {description && description.extra.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <Info className="h-3.5 w-3.5" />
+                      Additional details
+                    </p>
+                    <dl className="space-y-1.5 rounded-lg border bg-muted/30 p-3 text-sm">
+                      {description.extra.map((item, i) =>
+                        item.label ? (
+                          <div key={i} className="flex flex-wrap gap-x-1.5">
+                            <dt className="font-medium text-foreground">{item.label}:</dt>
+                            <dd className="text-muted-foreground">{item.value}</dd>
+                          </div>
+                        ) : (
+                          <div key={i} className="text-muted-foreground">
+                            {item.value}
+                          </div>
+                        ),
+                      )}
+                    </dl>
+                    {description.notes && (
+                      <p className="text-xs italic text-muted-foreground">{description.notes}</p>
+                    )}
+                  </div>
+                </>
               )}
             </div>
 

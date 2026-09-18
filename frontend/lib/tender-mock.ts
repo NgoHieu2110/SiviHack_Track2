@@ -258,6 +258,52 @@ export function matchTenders(profile: CompanyProfile): TenderMatch[] {
   return matches.sort((a, b) => b.score - a.score)
 }
 
-export function formatCurrency(value: number, code = "EUR") {
+/**
+ * The real backend's Tender fields (value, insuranceRequired, ...) are
+ * Optional and can come back as null when the source notice didn't carry a
+ * reliable value (see backend/models.py). Accept null/undefined here so
+ * every caller doesn't need its own guard before calling this.
+ */
+export function formatCurrency(value: number | null | undefined, code = "EUR") {
+  if (value === null || value === undefined) return "Not specified"
   return currency(value, code)
+}
+
+/**
+ * The real backend appends everything from a tender's raw source .md that
+ * doesn't fit the structured Tender fields onto the end of `description`,
+ * after a "---\n\n## Additional details" marker, as "- **Label:** value"
+ * lines plus an optional trailing italic notes paragraph (see
+ * workflow_tools/7_select_from_raw_tenders.py's parse_raw_tender_md()).
+ * Split that back out so callers can render it as its own clean section
+ * instead of dumping raw markdown into a plain text block.
+ */
+const ADDITIONAL_DETAILS_MARKER = "\n\n---\n\n## Additional details\n"
+
+export function splitDescription(description: string) {
+  const markerIndex = description.indexOf(ADDITIONAL_DETAILS_MARKER)
+  if (markerIndex === -1) {
+    return { core: description, extra: [] as { label: string; value: string }[], notes: null as string | null }
+  }
+
+  const core = description.slice(0, markerIndex)
+  let rest = description.slice(markerIndex + ADDITIONAL_DETAILS_MARKER.length)
+
+  let notes: string | null = null
+  const notesMarker = "\n\n_"
+  const notesIndex = rest.indexOf(notesMarker)
+  if (notesIndex !== -1) {
+    notes = rest.slice(notesIndex + notesMarker.length).trim().replace(/_$/, "")
+    rest = rest.slice(0, notesIndex)
+  }
+
+  const extra = rest
+    .split("\n")
+    .filter((line) => line.startsWith("- "))
+    .map((line) => {
+      const match = line.match(/^- \*\*(.+?):\*\*\s*(.*)$/)
+      return match ? { label: match[1], value: match[2] } : { label: "", value: line.slice(2) }
+    })
+
+  return { core, extra, notes }
 }

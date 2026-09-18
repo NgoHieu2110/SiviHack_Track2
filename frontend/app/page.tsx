@@ -4,7 +4,7 @@ import { useState } from "react"
 import { CompanyProfileForm } from "@/components/company-profile-form"
 import { TenderResults } from "@/components/tender-results"
 import { TenderDetailSheet } from "@/components/tender-detail-sheet"
-import { matchTenders } from "@/lib/tender-mock"
+import { matchTendersRequest, ApiError } from "@/lib/api"
 import type { CompanyProfile, TenderMatch } from "@/lib/tender-types"
 import { HardHat } from "lucide-react"
 import { toast } from "sonner"
@@ -26,18 +26,12 @@ export default function Page() {
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [detailId, setDetailId] = useState<string | null>(null)
+  const [viewingId, setViewingId] = useState<string | null>(null)
 
-  const detailMatch = matches.find((m) => m.tender.id === detailId) ?? null
-
-  const handleSubmit = () => {
-    const filledFields = Object.values(profile).filter((v) => {
-      if (Array.isArray(v)) return v.length > 0
-      if (typeof v === "number") return v > 0
-      if (typeof v === "string") return v.trim() !== ""
-      return Boolean(v)
-    }).length
-
+  const handleSubmit = async () => {
+    const filledFields = Object.values(profile).filter((v) =>
+      Array.isArray(v) ? v.length > 0 : typeof v === "string" ? v.trim() !== "" : v !== 0,
+    ).length
     if (filledFields < 2) {
       toast.error("Please fill in at least a couple of fields to get a meaningful match.")
       return
@@ -46,12 +40,34 @@ export default function Page() {
     setLoading(true)
     setHasSearched(true)
     setSelectedId(null)
-    // Simulate a backend/AI round-trip with mock data.
-    setTimeout(() => {
-      setMatches(matchTenders(profile))
+
+    // The backend runs a genuinely slow, multi-stage pipeline (Gemini call,
+    // then live tender fetching, then a second Gemini call to score/explain
+    // matches) and streams progress the whole way -- surface it here so the
+    // wait doesn't look frozen.
+    const toastId = toast.loading("Starting your tender search...")
+
+    try {
+      const results = await matchTendersRequest(profile, (event) => {
+        toast.loading(event.message, { id: toastId })
+      })
+      setMatches(results)
+      toast.success(
+        results.length > 0
+          ? `Found your ${results.length} best-matched tender${results.length === 1 ? "" : "s"}.`
+          : "No matching tenders found for this profile.",
+        { id: toastId },
+      )
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Something went wrong while matching tenders. Please try again."
+      toast.error(message, { id: toastId })
+      setMatches([])
+    } finally {
       setLoading(false)
-      toast.success("Found your 3 best-matched tenders.")
-    }, 1100)
+    }
   }
 
   const handleReset = () => {
@@ -59,7 +75,10 @@ export default function Page() {
     setMatches([])
     setHasSearched(false)
     setSelectedId(null)
+    setViewingId(null)
   }
+
+  const viewingMatch = matches.find((m) => m.tender.id === viewingId) ?? null
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -97,22 +116,21 @@ export default function Page() {
               hasSearched={hasSearched}
               selectedId={selectedId}
               onSelect={setSelectedId}
-              onViewDetails={setDetailId}
+              onViewDetails={setViewingId}
             />
           </section>
         </div>
       </main>
 
       <TenderDetailSheet
-        match={detailMatch}
-        open={detailId !== null}
-        onOpenChange={(open) => {
-          if (!open) setDetailId(null)
-        }}
-        isSelected={detailMatch ? selectedId === detailMatch.tender.id : false}
+        match={viewingMatch}
+        open={viewingId !== null}
+        onOpenChange={(open) => { if (!open) setViewingId(null) }}
+        isSelected={viewingMatch ? selectedId === viewingMatch.tender.id : false}
         onSelect={(id) => {
           setSelectedId(id)
-          toast.success("Tender selected.")
+          const t = matches.find((m) => m.tender.id === id)
+          if (t) toast.success(selectedId === id ? "Tender kept as selected" : `Selected "${t.tender.title}"`)
         }}
       />
     </div>
