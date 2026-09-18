@@ -146,8 +146,8 @@ ALLOWED_ORIGINS = [
 # PIPELINE_SELECT_COUNT of them, how many days back it's allowed to walk to
 # get there, and how many we finally show. Kept small by default since this
 # now runs live, in the request path.
-PIPELINE_TARGET_COUNT = int(os.environ.get("PIPELINE_TARGET_COUNT", "6"))
-PIPELINE_MAX_DAYS_BACK = int(os.environ.get("PIPELINE_MAX_DAYS_BACK", "60"))
+PIPELINE_TARGET_COUNT = int(os.environ.get("PIPELINE_TARGET_COUNT", "3"))
+PIPELINE_MAX_DAYS_BACK = int(os.environ.get("PIPELINE_MAX_DAYS_BACK", "5"))
 PIPELINE_SELECT_COUNT = int(os.environ.get("PIPELINE_SELECT_COUNT", "3"))
 
 app = FastAPI(title="Tender Matching API")

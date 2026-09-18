@@ -1,67 +1,727 @@
 {
   "tenders": {
-    "2204f7ca-9fd8-4721-b997-281820eaad50": {
-      "priority": 1,
-      "first_seen_run": "2026-09-18T10:14:36.727769+00:00",
-      "last_seen_run": "2026-09-18T10:14:36.727769+00:00",
+    "1c09e047-70fc-4538-a34c-0d7547111f20": {
+      "priority": 10,
+      "first_seen_run": "2026-09-18T11:16:34.777399+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
       "selected_count": 0,
       "last_selected_at": null,
-      "title": "WASEB, Inhauser Landstraße 20. 26388 Wilhelmshaven",
-      "authority": "Stadt Wilhelmshaven, FB 30 Rechtsamt, Zentrale Vergabestelle",
-      "value": 60300.0,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Abbrucharbeiten und Bodensanierung Connemara-Halle und Büro / Kantine",
+      "authority": "Gemeinde Altenstadt/WN",
+      "value": 1187050.0,
       "currency": "EUR",
       "deadline": null
     },
-    "3384d77a-d228-42ae-8087-319b77074f1b": {
-      "priority": 1,
-      "first_seen_run": "2026-09-18T10:14:36.727769+00:00",
-      "last_seen_run": "2026-09-18T10:14:36.727769+00:00",
+    "485dfdf8-0f7f-472f-968e-666f7792f91a": {
+      "priority": 10,
+      "first_seen_run": "2026-09-18T11:16:34.777399+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
       "selected_count": 0,
       "last_selected_at": null,
-      "title": "Erweiterung der Grundschule Rinkerode - Tiefbaumaßnahmen",
-      "authority": "Stadt Drensteinfurt",
-      "value": 295400.0,
-      "currency": "EUR",
-      "deadline": null,
-      "tolerance": {}
-    },
-    "588bef95-9547-42b2-8dd9-665d48e7df8d": {
-      "priority": 1,
-      "first_seen_run": "2026-09-18T10:14:36.727769+00:00",
-      "last_seen_run": "2026-09-18T10:14:36.727769+00:00",
-      "selected_count": 0,
-      "last_selected_at": null,
-      "title": "WASEB, Inhauser Landstraße 20. 26388 Wilhelmshaven",
-      "authority": "Stadt Wilhelmshaven, FB 30 Rechtsamt, Zentrale Vergabestelle",
-      "value": 60300.0,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "2 GW HVDC Offshore Platform and Converter System (2 GW HVDC System) for the NorthSeaConnector 1 Project (Yard Scope)",
+      "authority": "50Hertz Transmission GmbH",
+      "value": 1,
       "currency": "EUR",
       "deadline": null
     },
-    "8360ed98-8d8a-4ae0-b349-d230041ee3a4": {
-      "priority": 1,
-      "first_seen_run": "2026-09-18T10:14:36.727769+00:00",
-      "last_seen_run": "2026-09-18T10:14:36.727769+00:00",
+    "71dcdb38-8f8a-4f56-a9e4-8dcc8ea05d74": {
+      "priority": 10,
+      "first_seen_run": "2026-09-18T11:16:34.777399+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
       "selected_count": 0,
       "last_selected_at": null,
-      "title": "WASEB, Inhauser Landstraße 20. 26388 Wilhelmshaven",
-      "authority": "Stadt Wilhelmshaven, FB 30 Rechtsamt, Zentrale Vergabestelle",
-      "value": 60300.0,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau Werkstattgebäude Theodor-Litt-Schule, Ringallee 62, 35390 Gießen",
+      "authority": "Magistrat der Universitätsstadt Gießen - Hochbauamt -",
+      "value": 80830.0,
       "currency": "EUR",
       "deadline": null
     },
-    "9753731d-6e4d-49f0-81a9-e4fe576ea1f8": {
-      "priority": 1,
-      "first_seen_run": "2026-09-18T10:14:36.727769+00:00",
-      "last_seen_run": "2026-09-18T10:14:36.727769+00:00",
+    "9ad7cb70-56ac-4e93-ad85-e249a639d263": {
+      "priority": 10,
+      "first_seen_run": "2026-09-18T11:16:34.777399+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
       "selected_count": 0,
       "last_selected_at": null,
-      "title": "SmartLogisticNetwork- VE 37 Rohbau Logistikzentrum",
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Gebäudeautomation",
+      "authority": "Land Berlin vertr. durch BA Mitte v. Berlin",
+      "value": 152134.92,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "a1c9445b-e641-4ccd-874b-bc30d67b4ae9": {
+      "priority": 10,
+      "first_seen_run": "2026-09-18T11:16:34.777399+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "RV Instandsetzungsarbeiten an MS-Transformatoren bis 1000 kVA ",
+      "authority": "Stromnetz Berlin GmbH",
+      "value": 1,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "cad72a5b-ff15-4474-a524-642766d9acab": {
+      "priority": 10,
+      "first_seen_run": "2026-09-18T11:16:34.777399+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Heizungstechnische Anlagen nach DIN 18380",
+      "authority": "Stadt Göttingen",
+      "value": 414674.53,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "ed39f590-f49f-45e0-a8f1-1162101ef51c": {
+      "priority": 10,
+      "first_seen_run": "2026-09-18T11:16:34.777399+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Abbrucharbeiten BA 2",
+      "authority": "Markt Kösching",
+      "value": 500000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "f1d923c0-f3ea-4eb0-9d84-6ad35e1f5f0f": {
+      "priority": 10,
+      "first_seen_run": "2026-09-18T11:16:34.777399+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Los 2: Verkehrsführung während der Bauzeit",
+      "authority": "Die Autobahn GmbH des Bundes - NL Ost",
+      "value": 3202616.83,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "03661992-20f6-4e47-b6db-fd3a2715ab83": {
+      "priority": 9,
+      "first_seen_run": "2026-09-18T11:17:53.446168+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Umstellung der Telekommunikationsanlage auf Voice over IP (VoIP)",
+      "authority": "Freistaat Thüringen, vertreten durch den Thüringer Landtag",
+      "value": 503000,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "28315320-dcca-4e8e-9f0b-1f5f76d90461": {
+      "priority": 9,
+      "first_seen_run": "2026-09-18T11:17:53.446168+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Sanierung Rathaus mit Kulturzentraum: Medientechnik",
+      "authority": "Stadt Bocholt",
+      "value": 280000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "86cbced4-aaaf-4b8d-990f-4db958b61532": {
+      "priority": 9,
+      "first_seen_run": "2026-09-18T11:17:53.446168+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Casablanca Spektehaus - PV-Anlagen",
+      "authority": "Casablanca gGmbH",
+      "value": 68907.56,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "b2330136-c569-456f-9f8b-63bed0a64d15": {
+      "priority": 9,
+      "first_seen_run": "2026-09-18T11:17:53.446168+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau eines Multifunktionsgebäudes für Akademie für Sicherheit in Energiewende und Bevölkerungsschutz (mit Atemschutzübungsanlage), Inhauser Landstraße 20, 26388 Wilhelmshaven",
+      "authority": "Stadt Wilhelmshaven, FB 30 Rechtsamt, Zentrale Vergabestelle",
+      "value": 0.01,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "c0a04cec-2d70-4160-b2b6-90cf4a136855": {
+      "priority": 9,
+      "first_seen_run": "2026-09-18T11:17:53.446168+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau BHZ - Erdungs- und Blitzschutzanlage",
+      "authority": "Gemeinde Anröchte",
+      "value": 34000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "c32c9d1d-3e9e-4992-bebf-cb5130eaf0ce": {
+      "priority": 9,
+      "first_seen_run": "2026-09-18T11:17:53.446168+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Grundhafte Erneuerung der Gutenbergstraße in Gießen, 1. BA",
+      "authority": "Magistrat der Universitätsstadt Gießen - Tiefbauamt -",
+      "value": 1415446.92,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "032c8191-e52c-4727-8986-32ac0e9117a8": {
+      "priority": 8,
+      "first_seen_run": "2026-09-18T11:18:10.755035+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau BHZ - Durchsageanlage",
+      "authority": "Gemeinde Anröchte",
+      "value": 34000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "26d347d6-edad-48f4-ba20-7d6ba595edcb": {
+      "priority": 8,
+      "first_seen_run": "2026-09-18T11:18:10.755035+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau BHZ - PV Anlage",
+      "authority": "Gemeinde Anröchte",
+      "value": 91000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "31798f64-5c94-454e-b8e6-3cc13d84ca12": {
+      "priority": 8,
+      "first_seen_run": "2026-09-18T11:18:10.755035+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau BHZ - BMA",
+      "authority": "Gemeinde Anröchte",
+      "value": 84000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "709acb04-1ba5-4142-9fff-daa171917f43": {
+      "priority": 8,
+      "first_seen_run": "2026-09-18T11:18:10.755035+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau BHZ - EMA_Video",
+      "authority": "Gemeinde Anröchte",
+      "value": 63000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "8aeb0aeb-f883-4006-929c-bbf15bb7e550": {
+      "priority": 8,
+      "first_seen_run": "2026-09-18T11:18:10.755035+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau Rathaus Herzebrock-Clarholz - 14 Gewerk Aufzugsanlage",
+      "authority": "Herzebrock-Clarholz",
+      "value": 77000,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "9f53b4f4-75ef-4c67-a9a6-d8ef7b538878": {
+      "priority": 8,
+      "first_seen_run": "2026-09-18T11:18:10.755035+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Teilersatz von Schutz- und Leittechnik in den vier 110-/10-kV Umspannwerken Gelnitz, Tegel, Rüdersdorfer Straße und Laufener Straße (Lose 1-6)",
+      "authority": "Stromnetz Berlin GmbH",
+      "value": 1.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "05dfce87-6c52-4bac-aed6-05ae22687c15": {
+      "priority": 7,
+      "first_seen_run": "2026-09-18T11:19:50.558880+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau Feuerwehrhaus der Stadt Rietberg - Photovoltaikanlage",
+      "authority": "Stadt Rietberg",
+      "value": 92920.34,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "0daa6e50-768c-43ba-a65d-6e2849bba313": {
+      "priority": 7,
+      "first_seen_run": "2026-09-18T11:19:50.558880+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "MPI für Sicherheit und Privatsphäre, Bochum - Institutsneubau:  Mess-, Steuer- und Regelungstechnik (MSR) / Gebäudeautomation ",
+      "authority": "Max-Planck-Gesellschaft Abt.III",
+      "value": 1,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "46b282d0-4d76-43cb-9d22-fb7562c03172": {
+      "priority": 7,
+      "first_seen_run": "2026-09-18T11:19:50.558880+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau Feuerwehrhaus der Stadt Rietberg - Brandmeldeanlage",
+      "authority": "Stadt Rietberg",
+      "value": 82090.85,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "487a0da8-12ff-4a01-a2b2-600d44099465": {
+      "priority": 7,
+      "first_seen_run": "2026-09-18T11:19:50.558880+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "KH Merheim - Bettenhaussanierung Haus 20, A-Seite\nGebäudeautomation-3 (MSR-3)",
+      "authority": "Kliniken der Stadt Köln gGmbH",
+      "value": 630000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "6180b1d7-b53b-4a37-81e6-6768c0591f35": {
+      "priority": 7,
+      "first_seen_run": "2026-09-18T11:19:50.558880+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Modernisierung Olgastraße\n\nBA3/BA4 Elektroleistungen",
+      "authority": "Staatl. Hochbauamt Stuttgart",
+      "value": 1545059.14,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "f0e7eeda-1d26-4b1e-bc1b-5892297b535f": {
+      "priority": 7,
+      "first_seen_run": "2026-09-18T11:19:50.558880+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau Feuerwehrhaus der Stadt Rietberg - Blitzschutz- und Erdungsanlagen",
+      "authority": "Stadt Rietberg",
+      "value": 52440.85,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "18dc4962-ff6c-4408-9f03-550b1e767e43": {
+      "priority": 6,
+      "first_seen_run": "2026-09-18T11:21:47.433512+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "PV-Anlagen Teil 3, Parkhäuser",
       "authority": "Universitätsklinikum Bonn AöR",
       "value": 1.0,
       "currency": "EUR",
-      "deadline": null,
-      "tolerance": {}
+      "deadline": null
+    },
+    "1a0fdc47-9ae9-413a-b987-8d9593d9e770": {
+      "priority": 6,
+      "first_seen_run": "2026-09-18T11:21:47.433512+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "KH Merheim, Bettenhaussanierung Haus 20, A-Seite - Gebäudeautomation-2 (MSR-2)",
+      "authority": "Kliniken der Stadt Köln gGmbH",
+      "value": 630000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "1bccf1e9-2895-4a75-ad9e-a72d9b0f0fdf": {
+      "priority": 6,
+      "first_seen_run": "2026-09-18T11:21:47.433512+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau TWWP (Trilaterales Weltnaturerbe Wattenmeer Partnerschaftszentrum)",
+      "authority": "Stadt Wilhelmshaven, FB 30 Rechtsamt, Zentrale Vergabestelle",
+      "value": 0.01,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "8456faf9-404e-423f-9e70-b166dac4734e": {
+      "priority": 6,
+      "first_seen_run": "2026-09-18T11:21:47.433512+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "26E10231 - Hochschule für Bildende Künste (HBK Braunschweig), Ersatzneubau Ateliergebäude - 1. BA Vorgezogene Maßnahmen (Kampfmittelsondierung, Regenwasserkanal, Baufeld)",
+      "authority": "Land Niedersachsen vertreten durch das Staatliche Baumanagement Niedersachsen",
+      "value": 1233000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "b6a5218d-42e7-46a3-b2bb-e33bbea449b9": {
+      "priority": 6,
+      "first_seen_run": "2026-09-18T11:21:47.433512+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "EVR - Los 4a Elektrotechnik",
+      "authority": "Berliner Stadtreinigungsbetriebe AöR",
+      "value": 1.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "e5b67b03-12e8-4665-8295-df51e9704af4": {
+      "priority": 6,
+      "first_seen_run": "2026-09-18T11:21:47.433512+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "KH Merheim - Bettenhaussanierung Haus 20, A-Seite\nGebäudeautomation-3 (MSR-3)",
+      "authority": "Kliniken der Stadt Köln gGmbH",
+      "value": 630000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "61de2a26-d9a7-44c9-b6fa-400552c76532": {
+      "priority": 5,
+      "first_seen_run": "2026-09-18T11:24:15.194294+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "RV Lieferung von NS-Verteilungen für Trafostationen",
+      "authority": "Netzgesellschaft Potsdam GmbH",
+      "value": 750000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "99878c3c-de95-4ace-bac5-00387d10d607": {
+      "priority": 5,
+      "first_seen_run": "2026-09-18T11:24:15.194294+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Sanierung Rathaus mit Kulturzentraum: Medientechnik",
+      "authority": "Stadt Bocholt",
+      "value": 280000.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "9eb00070-4ce0-4ada-a9e5-935f6ecee98f": {
+      "priority": 5,
+      "first_seen_run": "2026-09-18T11:24:15.194294+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Gebäudeautomation",
+      "authority": "Landkreis Nienburg/Weser",
+      "value": 530717.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "a27690d6-4c3f-4b5d-8f3e-4db84aa52c3c": {
+      "priority": 5,
+      "first_seen_run": "2026-09-18T11:24:15.194294+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau Übergabestation KA Leverkusen: EMSR - Technik",
+      "authority": "Wupperverband",
+      "value": 1708107.5,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "a341c3b4-a56d-4cc5-a4d4-fa77b124a825": {
+      "priority": 5,
+      "first_seen_run": "2026-09-18T11:24:15.194294+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "EPV: Fertigung, Lieferung, Legung und Montage von betriebsfertigen 110kV-Kabelsystemen der Stromnetz Berlin GmbH",
+      "authority": "Stromnetz Berlin GmbH",
+      "value": 1.0,
+      "currency": "EUR",
+      "deadline": null
+    },
+    "f45fe465-095c-4c60-be69-c41830f38c3c": {
+      "priority": 5,
+      "first_seen_run": "2026-09-18T11:24:15.194294+00:00",
+      "last_seen_run": "2026-09-18T11:30:26.316979+00:00",
+      "selected_count": 0,
+      "last_selected_at": null,
+      "tolerance": {
+        "cpv": 0.5,
+        "nuts": 0.5,
+        "value": 0.5,
+        "exclude": 0.5,
+        "role_hint": 0.5
+      },
+      "title": "Neubau Übergabestation KA Leverkusen: EMSR - Technik",
+      "authority": "Wupperverband",
+      "value": 1708107.5,
+      "currency": "EUR",
+      "deadline": null
     }
   },
-  "updated_at": "2026-09-18T10:14:36.968103+00:00"
+  "updated_at": "2026-09-18T11:30:26.326651+00:00"
 }

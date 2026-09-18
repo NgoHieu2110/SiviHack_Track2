@@ -1,0 +1,262 @@
+{
+  "9675395e4c36a012": {
+    "cpv_ladder": {
+      "0.0": [
+        {
+          "code": "45311000",
+          "label": "Electrical wiring and fitting work"
+        },
+        {
+          "code": "45311200",
+          "label": "Electrical fitting work"
+        },
+        {
+          "code": "45312100",
+          "label": "Fire alarm system installation work"
+        },
+        {
+          "code": "45317000",
+          "label": "Other electrical installation work"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "45310000",
+          "label": "Electrical installation work"
+        },
+        {
+          "code": "45311000",
+          "label": "Electrical wiring and fitting work"
+        },
+        {
+          "code": "45312000",
+          "label": "Alarm system and antenna installation work"
+        },
+        {
+          "code": "45317000",
+          "label": "Other electrical installation work"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "4531",
+          "label": "Electrical installation work"
+        },
+        {
+          "code": "45300000",
+          "label": "Building installation work"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "453",
+          "label": "Building installation work"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "45",
+          "label": "Construction work"
+        }
+      ],
+      "1.0": []
+    },
+    "nuts_ladder": {
+      "0.0": [
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DE7",
+          "label": "Hessen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DEA",
+          "label": "Nordrhein-Westfalen"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "DE3",
+          "label": "Berlin"
+        },
+        {
+          "code": "DE4",
+          "label": "Brandenburg"
+        },
+        {
+          "code": "DE5",
+          "label": "Bremen"
+        },
+        {
+          "code": "DE6",
+          "label": "Hamburg"
+        },
+        {
+          "code": "DE7",
+          "label": "Hessen"
+        },
+        {
+          "code": "DE8",
+          "label": "Mecklenburg-Vorpommern"
+        },
+        {
+          "code": "DE9",
+          "label": "Niedersachsen"
+        },
+        {
+          "code": "DEA",
+          "label": "Nordrhein-Westfalen"
+        },
+        {
+          "code": "DEB",
+          "label": "Rheinland-Pfalz"
+        },
+        {
+          "code": "DED",
+          "label": "Sachsen"
+        },
+        {
+          "code": "DEE",
+          "label": "Sachsen-Anhalt"
+        },
+        {
+          "code": "DEF",
+          "label": "Schleswig-Holstein"
+        },
+        {
+          "code": "DEG",
+          "label": "Thueringen"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "1.0": []
+    },
+    "exclude_keywords_ladder": {
+      "0.0": [
+        "Gleisbau",
+        "Tiefbau",
+        "Rohrbau"
+      ],
+      "0.2": [
+        "Gleisbau",
+        "Tiefbau"
+      ],
+      "0.4": [
+        "Gleisbau"
+      ],
+      "0.6": [],
+      "0.8": [],
+      "1.0": []
+    },
+    "role_hint_ladder": {
+      "0.0": [
+        "Elektroinstallation",
+        "Elektroarbeiten",
+        "Starkstrominstallation",
+        "Schaltanlagenbau"
+      ],
+      "0.2": [
+        "Elektroinstallation",
+        "Elektroarbeiten",
+        "Starkstromarbeiten"
+      ],
+      "0.4": [
+        "Elektroinstallation",
+        "Elektroarbeiten"
+      ],
+      "0.6": [
+        "Elektroinstallation"
+      ],
+      "0.8": [],
+      "1.0": []
+    },
+    "value_min_tight": 0,
+    "value_min_loose": 0,
+    "value_max_tight": 783834,
+    "value_max_loose": 7838340,
+    "notes": "Filter for an electrical installation contractor operating across Northern Germany (HB, HH, MV, NI, SH) with projects up to ~784k EUR."
+  }
+}
