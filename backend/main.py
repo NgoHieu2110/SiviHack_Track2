@@ -131,7 +131,7 @@ TENDERS_SEEN_DIR = Path(os.environ.get("TENDERS_SEEN_DIR", BASE_DIR / "tenders_s
 
 FILTER_SCRIPT_PATH = Path(os.environ.get("FILTER_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "2_company_details_to_initial_filter.py"))
 FETCH_FILTER_RUNNER_PATH = Path(os.environ.get("FETCH_FILTER_RUNNER_PATH", WORKFLOW_TOOLS_DIR / "3_run_filter_for_tenders.py"))
-SELECT_SCRIPT_PATH = Path(os.environ.get("SELECT_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "5_select_tenders.py"))
+#SELECT_SCRIPT_PATH = Path(os.environ.get("SELECT_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "5_select_tenders.py"))
 REMOVE_SCRIPT_PATH = Path(os.environ.get("REMOVE_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "6_user_select_remove_tenders.py"))
 SELECT_FROM_RAW_SCRIPT_PATH = Path(os.environ.get("SELECT_FROM_RAW_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "7_select_from_raw_tenders.py"))
 CHANGE_TOLERANCE_SCRIPT_PATH = Path(os.environ.get("CHANGE_TOLERANCE_SCRIPT_PATH", WORKFLOW_TOOLS_DIR / "8_change_filter_tolerance.py"))
@@ -193,7 +193,7 @@ def load_module(name: str, path: Path):
 
 filter_module = load_module("details_to_filter", FILTER_SCRIPT_PATH)
 run_filter_module = load_module("run_filter_for_tenders", FETCH_FILTER_RUNNER_PATH)
-select_module = load_module("select_tenders", SELECT_SCRIPT_PATH)
+#select_module = load_module("select_tenders", SELECT_SCRIPT_PATH)
 remove_module = load_module("user_select_remove_tenders", REMOVE_SCRIPT_PATH)
 select_from_raw_module = load_module("select_from_raw", SELECT_FROM_RAW_SCRIPT_PATH)
 change_tolerance_module = load_module("change_filter_tolerance", CHANGE_TOLERANCE_SCRIPT_PATH)
@@ -345,10 +345,7 @@ def run_pipeline(profile: CompanyProfile, q: "queue.Queue") -> list[dict]:
             raw_dir=TENDERS_DIR,
         )
     except (FileNotFoundError, ValueError, RuntimeError) as e:
-        raise RuntimeError(
-            "No tenders matched your profile within the search window. "
-            "Try broadening your specifications or contract value range."
-        ) from e
+        raise RuntimeError(f"Could not select your top tenders: {e}") from e
 
     q.put({"type": "progress", "stage": "done", "message": f"Found {len(matches)} tender(s)."})
     return matches

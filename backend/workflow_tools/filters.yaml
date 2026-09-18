@@ -23,6 +23,15 @@
 
 display_name: "company"
 
+# Exact tolerance dials used to build this file (machine-readable;
+# do not remove -- downstream scripts depend on this block).
+tolerance:
+  cpv: 0.5000
+  nuts: 0.5000
+  value: 0.5000
+  exclude: 0.5000
+  role_hint: 0.5000
+
 # cpv_prefixes (tolerance=0.50, snapped to step 0.4)
 cpv_prefixes:
   - "45200000"  # Works for complete or part construction and civil engineering work

@@ -1,65 +1,70 @@
 {
   "tenders": {
     "2204f7ca-9fd8-4721-b997-281820eaad50": {
-      "priority": 1,
+      "priority": 7,
       "first_seen_run": "2026-09-18T10:14:36.727769+00:00",
-      "last_seen_run": "2026-09-18T10:14:36.727769+00:00",
+      "last_seen_run": "2026-09-18T11:03:30.446563+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "title": "WASEB, Inhauser Landstraße 20. 26388 Wilhelmshaven",
       "authority": "Stadt Wilhelmshaven, FB 30 Rechtsamt, Zentrale Vergabestelle",
       "value": 60300.0,
       "currency": "EUR",
-      "deadline": null
+      "deadline": null,
+      "tolerance": {}
     },
     "3384d77a-d228-42ae-8087-319b77074f1b": {
-      "priority": 1,
+      "priority": 7,
       "first_seen_run": "2026-09-18T10:14:36.727769+00:00",
-      "last_seen_run": "2026-09-18T10:14:36.727769+00:00",
+      "last_seen_run": "2026-09-18T11:03:30.446563+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "title": "Erweiterung der Grundschule Rinkerode - Tiefbaumaßnahmen",
       "authority": "Stadt Drensteinfurt",
       "value": 295400.0,
       "currency": "EUR",
-      "deadline": null
+      "deadline": null,
+      "tolerance": {}
     },
     "588bef95-9547-42b2-8dd9-665d48e7df8d": {
-      "priority": 1,
+      "priority": 7,
       "first_seen_run": "2026-09-18T10:14:36.727769+00:00",
-      "last_seen_run": "2026-09-18T10:14:36.727769+00:00",
+      "last_seen_run": "2026-09-18T11:03:30.446563+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "title": "WASEB, Inhauser Landstraße 20. 26388 Wilhelmshaven",
       "authority": "Stadt Wilhelmshaven, FB 30 Rechtsamt, Zentrale Vergabestelle",
       "value": 60300.0,
       "currency": "EUR",
-      "deadline": null
+      "deadline": null,
+      "tolerance": {}
     },
     "8360ed98-8d8a-4ae0-b349-d230041ee3a4": {
-      "priority": 1,
+      "priority": 7,
       "first_seen_run": "2026-09-18T10:14:36.727769+00:00",
-      "last_seen_run": "2026-09-18T10:14:36.727769+00:00",
+      "last_seen_run": "2026-09-18T11:03:30.446563+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "title": "WASEB, Inhauser Landstraße 20. 26388 Wilhelmshaven",
       "authority": "Stadt Wilhelmshaven, FB 30 Rechtsamt, Zentrale Vergabestelle",
       "value": 60300.0,
       "currency": "EUR",
-      "deadline": null
+      "deadline": null,
+      "tolerance": {}
     },
     "9753731d-6e4d-49f0-81a9-e4fe576ea1f8": {
-      "priority": 1,
+      "priority": 7,
       "first_seen_run": "2026-09-18T10:14:36.727769+00:00",
-      "last_seen_run": "2026-09-18T10:14:36.727769+00:00",
+      "last_seen_run": "2026-09-18T11:03:30.446563+00:00",
       "selected_count": 0,
       "last_selected_at": null,
       "title": "SmartLogisticNetwork- VE 37 Rohbau Logistikzentrum",
       "authority": "Universitätsklinikum Bonn AöR",
       "value": 1.0,
       "currency": "EUR",
-      "deadline": null
+      "deadline": null,
+      "tolerance": {}
     }
   },
-  "updated_at": "2026-09-18T10:14:36.968103+00:00"
+  "updated_at": "2026-09-18T11:03:30.448373+00:00"
 }
