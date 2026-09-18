@@ -1,0 +1,147 @@
+{
+  "Web submission 2026-09-18 03:56:58 UTC (186cf2)": {
+    "cpv_ladder": {
+      "0.0": [
+        {
+          "code": "45234100",
+          "label": "Railway construction works"
+        },
+        {
+          "code": "71311230",
+          "label": "Railway engineering services"
+        },
+        {
+          "code": "50220000",
+          "label": "Repair, maintenance and associated services related to railways"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "45234000",
+          "label": "Construction work for railways and cable transport systems"
+        },
+        {
+          "code": "71311200",
+          "label": "Transport engineering services"
+        },
+        {
+          "code": "50220000",
+          "label": "Repair, maintenance and associated services related to railways"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "45234000",
+          "label": "Construction work for railways and cable transport systems"
+        },
+        {
+          "code": "71311000",
+          "label": "Civil engineering services"
+        },
+        {
+          "code": "50200000",
+          "label": "Repair, maintenance and associated services related to transport and other equipment"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "45230000",
+          "label": "Construction work for pipelines, communication and power lines, for highways, roads, airfield and railways"
+        },
+        {
+          "code": "71300000",
+          "label": "Engineering services"
+        },
+        {
+          "code": "50200000",
+          "label": "Repair, maintenance and associated services related to transport and other equipment"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "45000000",
+          "label": "Construction work"
+        },
+        {
+          "code": "71000000",
+          "label": "Architectural, construction, engineering and inspection services"
+        },
+        {
+          "code": "50000000",
+          "label": "Repair and maintenance services"
+        }
+      ],
+      "1.0": []
+    },
+    "nuts_ladder": {
+      "0.0": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "0.2": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "0.4": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "0.6": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "0.8": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "1.0": []
+    },
+    "exclude_keywords_ladder": {
+      "0.0": [],
+      "0.2": [],
+      "0.4": [],
+      "0.6": [],
+      "0.8": [],
+      "1.0": []
+    },
+    "role_hint_ladder": {
+      "0.0": [
+        "Eisenbahnbau",
+        "Gleisbau",
+        "Bahnstrecke",
+        "Eisenbahninfrastruktur"
+      ],
+      "0.2": [
+        "Eisenbahnbau",
+        "Gleisbau",
+        "Bahnstrecke"
+      ],
+      "0.4": [
+        "Eisenbahnbau",
+        "Gleisbau"
+      ],
+      "0.6": [
+        "Gleisbau"
+      ],
+      "0.8": [
+        "Bahn"
+      ],
+      "1.0": []
+    },
+    "value_min_tight": 0,
+    "value_min_loose": 0,
+    "value_max_tight": 89323929,
+    "value_max_loose": 893239290,
+    "notes": "Company operates in railway construction, maintenance, and engineering services with capacity up to EUR 89.3M. Regional preferences cover nationwide Germany tenders."
+  }
+}

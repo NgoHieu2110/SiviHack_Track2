@@ -92,7 +92,7 @@ import urllib.request
 
 from common import get_gemini_api_key
 
-GEMINI_MODEL_DEFAULT = "gemini-2.5-flash"
+GEMINI_MODEL_DEFAULT = "gemini-3.6-flash"
 GEMINI_ENDPOINT_TEMPLATE = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 )

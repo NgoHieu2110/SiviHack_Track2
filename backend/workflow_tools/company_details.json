@@ -1,0 +1,43 @@
+{
+  "companies": [
+    {
+      "does": "Railways",
+      "contractNature": "Supplies",
+      "placeOfPerformance": "Hai Duong",
+      "contractValueMin": "0",
+      "contractValueMax": "2849390",
+      "exclusions": "",
+      "specifications": "",
+      "revenue": 983493.0,
+      "employees": 30,
+      "name": "Web submission 2026-09-18 03:47:28 UTC (ebdeda)",
+      "submittedAt": "2026-09-18T03:47:28.250732+00:00"
+    },
+    {
+      "does": "Railways",
+      "contractNature": "Supplies",
+      "placeOfPerformance": "Hai Duong",
+      "contractValueMin": "0",
+      "contractValueMax": "2849390",
+      "exclusions": "",
+      "specifications": "",
+      "revenue": 983493.0,
+      "employees": 30,
+      "name": "Web submission 2026-09-18 03:47:56 UTC (af5ed7)",
+      "submittedAt": "2026-09-18T03:47:56.827447+00:00"
+    },
+    {
+      "does": "Railways",
+      "contractNature": "Mixed (Works & Services)",
+      "placeOfPerformance": "Hai Duong",
+      "contractValueMin": "0",
+      "contractValueMax": "89323929",
+      "exclusions": "",
+      "specifications": "",
+      "revenue": 8928932.0,
+      "employees": 40,
+      "name": "Web submission 2026-09-18 03:56:58 UTC (186cf2)",
+      "submittedAt": "2026-09-18T03:56:58.320711+00:00"
+    }
+  ]
+}
